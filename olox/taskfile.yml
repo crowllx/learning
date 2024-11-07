@@ -1,0 +1,17 @@
+version: '3'
+
+tasks:
+  build:
+    cmds:
+      - odin build tree-walk -vet -out:bin/olox-tree-walk
+
+  run:
+    deps: [build]
+    cmds:
+      - ./bin/olox-tree-walk
+
+  test:
+    cmds:
+      - odin test tree-walk -vet -all-packages -out:bin/olox-tree-walk
+
+

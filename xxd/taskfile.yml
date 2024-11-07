@@ -1,0 +1,22 @@
+version: '3'
+
+
+tasks:
+  build:
+    cmds:
+      - odin build . -vet -o:aggressive -microarch:native -out:bin/xxd
+  build-debug:
+    cmds:
+      - odin build . -vet -debug -out:bin/debug
+
+  run:
+    deps: [build]
+    cmds:
+      - bin/xxd {{.CLI_ARGS}}
+
+  debug:
+    deps: [build-debug]
+    cmds:
+      - gdb bin/debug
+
+    
