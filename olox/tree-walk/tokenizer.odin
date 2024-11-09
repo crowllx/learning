@@ -2,6 +2,25 @@ package main
 import "core:fmt"
 import "core:unicode/utf8"
 
+@(private = "file")
+Identifiers := map[string]TokenType {
+    "and"    = .AND,
+    "class"  = .CLASS,
+    "else"   = .ELSE,
+    "false"  = .FALSE,
+    "for"    = .FOR,
+    "fun"    = .FUN,
+    "if"     = .IF,
+    "nil"    = .NIL,
+    "or"     = .OR,
+    "print"  = .PRINT,
+    "return" = .RETURN,
+    "super"  = .SUPER,
+    "this"   = .THIS,
+    "true"   = .TRUE,
+    "var"    = .VAR,
+    "while"  = .WHILE,
+}
 TokenType :: enum {
     //single character
     LEFT_PAREN,
@@ -203,15 +222,31 @@ scan :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
     }
 
     // scan lengthy? scan words?
-    switch c {
-    case '"':
+    if c == '"' {
         find_string_end(t, c)
         result = true
         token_type = .STRING
-    case:
+
+    } else if is_digit(c) {
+        find_number_end(t, c)
+        return .NUMBER, true
+
+    } else if is_alnum(c) {
+        find_identifier_end(t, c)
+        id := utf8.runes_to_string(t.source[t.start:t.position])
+        defer delete(id)
+        elem, ok := Identifiers[id]
+        if ok {
+            token_type = elem
+        } else {
+            token_type = .IDENTIFIER
+        }
+        return token_type, true
+
+    } else {
         fmt.eprintfln("Unexpected character %v", c)
-    // one or two character tokens
     }
+    // one or two character tokens
     return token_type, result
 }
 
@@ -220,6 +255,21 @@ find_string_end :: proc(t: ^Tokenizer, c: rune) {
     next := advance(t)
     for next != '"' {
         next = advance(t)
+    }
+}
+
+@(private = "file")
+find_number_end :: proc(t: ^Tokenizer, c: rune) {
+    for is_digit(peek(t)) {
+        advance(t)
+        if peek(t) == '.' do advance(t)
+    }
+}
+
+@(private = "file")
+find_identifier_end :: proc(t: ^Tokenizer, c: rune) {
+    for is_alnum(peek(t)) {
+        advance(t)
     }
 }
 
@@ -235,6 +285,22 @@ is_comment :: proc(t: ^Tokenizer, c: rune) -> bool {
 }
 
 @(private = "file")
+is_digit :: proc(c: rune) -> bool {
+    return c >= 0 && c <= 9
+}
+
+
+@(private = "file")
+is_alpha :: proc(c: rune) -> bool {
+    return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || c == '_'
+}
+
+@(private = "file")
+is_alnum :: proc(c: rune) -> bool {
+    return is_digit(c) || is_alpha(c)
+}
+
+@(private = "file")
 check_double :: proc(t: ^Tokenizer, c: rune, t1, t2: TokenType) -> TokenType {
     if match(t, c) {
         advance(t)
@@ -247,6 +313,7 @@ check_double :: proc(t: ^Tokenizer, c: rune, t1, t2: TokenType) -> TokenType {
 @(private = "file")
 advance :: proc(t: ^Tokenizer) -> rune {
     if t.position >= len(t.source) {
+        // return error indicating end of string
         return '\x00'
     }
     c := t.source[t.position]
@@ -263,4 +330,3 @@ match :: proc(t: ^Tokenizer, c: rune) -> bool {
 peek :: proc(t: ^Tokenizer) -> rune {
     return t.source[t.position]
 }
-
