@@ -1,4 +1,4 @@
-package main
+package tokenizer
 import "core:fmt"
 import "core:unicode/utf8"
 
@@ -21,6 +21,7 @@ Identifiers := map[string]TokenType {
     "var"    = .VAR,
     "while"  = .WHILE,
 }
+
 TokenType :: enum {
     //single character
     LEFT_PAREN,
@@ -70,26 +71,15 @@ TokenType :: enum {
     EOF,
 }
 
-Literal :: union {
-    int,
-    f32,
-    string,
-}
-
-Lexeme :: union {
-    string,
-    rune,
-}
 Token :: struct {
-    type:    TokenType,
-    line:    int,
-    lexeme:  Lexeme,
-    literal: Literal,
+    type:   TokenType,
+    line:   int,
+    lexeme: string,
 }
 
 @(private = "file")
 token_create :: proc(t: Tokenizer, type: TokenType) -> Token {
-    return Token{type, t.line, 'c', 3.14}
+    return Token{type, t.line, t.source[t.start:t.position]}
 }
 
 token_to_string :: proc(t: Token) {
@@ -98,13 +88,13 @@ token_to_string :: proc(t: Token) {
 
 // source needs deletion
 Tokenizer :: struct {
-    source:          []rune,
+    source:          string,
     start, position: int,
     line:            int,
 }
 
 tokenizer_create :: proc(src: string) -> Tokenizer {
-    return Tokenizer{source = utf8.string_to_runes(src)}
+    return Tokenizer{source = src}
 }
 
 tokenizer_destroy :: proc(t: ^Tokenizer) {
@@ -209,6 +199,7 @@ scan_skippables :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
 scan :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
     result := false
     token_type: TokenType
+
     if token_type, result = scan_single(t, c); result {
         return token_type, result
     }
@@ -226,6 +217,7 @@ scan :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
         find_string_end(t, c)
         result = true
         token_type = .STRING
+        return token_type, result
 
     } else if is_digit(c) {
         find_number_end(t, c)
@@ -233,8 +225,7 @@ scan :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
 
     } else if is_alnum(c) {
         find_identifier_end(t, c)
-        id := utf8.runes_to_string(t.source[t.start:t.position])
-        defer delete(id)
+        id := t.source[t.start:t.position]
         elem, ok := Identifiers[id]
         if ok {
             token_type = elem
@@ -244,7 +235,8 @@ scan :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
         return token_type, true
 
     } else {
-        fmt.eprintfln("Unexpected character %v", c)
+        fmt.eprintfln("Unexpected character %r, %d", c, t.position)
+        t.start = t.position
     }
     // one or two character tokens
     return token_type, result
@@ -286,7 +278,7 @@ is_comment :: proc(t: ^Tokenizer, c: rune) -> bool {
 
 @(private = "file")
 is_digit :: proc(c: rune) -> bool {
-    return c >= 0 && c <= 9
+    return c >= '0' && c <= '9'
 }
 
 
@@ -316,17 +308,17 @@ advance :: proc(t: ^Tokenizer) -> rune {
         // return error indicating end of string
         return '\x00'
     }
-    c := t.source[t.position]
-    t.position += 1
+    c := utf8.rune_at(t.source, t.position)
+    t.position += utf8.rune_size(c)
     return c
 }
 
 @(private = "file")
 match :: proc(t: ^Tokenizer, c: rune) -> bool {
-    return c == t.source[t.position]
+    return c == utf8.rune_at(t.source, t.position)
 }
 
 @(private = "file")
 peek :: proc(t: ^Tokenizer) -> rune {
-    return t.source[t.position]
+    return utf8.rune_at(t.source, t.position)
 }

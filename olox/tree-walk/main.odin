@@ -1,17 +1,18 @@
-package main
+package tree
 
 import "core:bufio"
 import "core:fmt"
 import "core:io"
 import "core:mem"
 import "core:os"
+import tok "tokenizer"
 
 run :: proc(line: string) {
-    t := tokenizer_create(line)
-    defer tokenizer_destroy(&t)
+    t := tok.tokenizer_create(line)
+    defer tok.tokenizer_destroy(&t)
 
     for {
-        if token, done := tokenizer_next(&t); done {
+        if token, done := tok.tokenizer_next(&t); done {
             fmt.printfln("token: %v", token)
         } else {
             fmt.println("done")
@@ -29,7 +30,7 @@ run_prompt :: proc() -> io.Error {
 
     for {
         line := bufio.reader_read_string(&r, '\n') or_return
-        defer delete(line)
+        // defer delete(line)
         run(line)
     }
 }
