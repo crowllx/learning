@@ -1,5 +1,6 @@
 package tokenizer
 import "core:fmt"
+import "core:strconv"
 import "core:unicode/utf8"
 
 @(private = "file")
@@ -71,15 +72,38 @@ TokenType :: enum {
     EOF,
 }
 
+
+Literal :: union {
+    bool,
+    string,
+    f64,
+    int,
+}
 Token :: struct {
-    type:   TokenType,
-    line:   int,
-    lexeme: string,
+    type:    TokenType,
+    line:    int,
+    lexeme:  string,
+    literal: Literal,
 }
 
 @(private = "file")
 token_create :: proc(t: Tokenizer, type: TokenType) -> Token {
-    return Token{type, t.line, t.source[t.start:t.position]}
+    lit: Literal
+    lex := t.source[t.start:t.position]
+
+    #partial switch type {
+    case .STRING:
+        lit = lex
+    case .NUMBER:
+        lit = strconv.atof(lex)
+    case .FALSE:
+        lit = false
+    case .TRUE:
+        lit = true
+    case .NIL:
+        lit = nil
+    }
+    return Token{type, t.line, lex, lit}
 }
 
 token_to_string :: proc(t: Token) {
@@ -187,9 +211,13 @@ scan_skippables :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
             token_type = .SLASH
         }
     case ' ':
+        result = true
     case '\r':
+        result = true
     case '\n':
+        result = true
         t.line += 1
+        result = true
     case '\t':
     }
     return token_type, result
@@ -209,7 +237,8 @@ scan :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
     }
 
     if token_type, result = scan_skippables(t, c); result {
-        return token_type, result
+        t.start = t.position
+        return token_type, false
     }
 
     // scan lengthy? scan words?

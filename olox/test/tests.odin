@@ -1,36 +1,69 @@
 package main
 
 import ast "../tree-walk/ast"
+import p "../tree-walk/parser"
 import tok "../tree-walk/tokenizer"
 import "core:fmt"
+import "core:log"
 import "core:strings"
+import "core:testing"
 
 @(test)
+expression_test :: proc(t: ^testing.T) {
+
+    t := tok.tokenizer_create("1 + 3")
+    tokens: [dynamic]tok.Token
+    defer tok.tokenizer_destroy(&t)
+    defer delete(tokens)
+
+    for {
+        if token, ok := tok.tokenizer_next(&t); ok {
+            append(&tokens, token)
+        } else {
+            break
+        }
+    }
+    log.info(len(tokens))
+    log.info(len(tokens))
+    log.info(len(tokens))
+    log.info(len(tokens))
+    log.info(len(tokens))
+
+
+    parser := p.parser_init(tokens[:])
+    expr := p.parse(&parser)
+    expr_str := ast.to_string(expr)
+    defer delete(expr_str)
+    // log.infof("%v", expr)
+    // log.infof("%v", expr)
+    // log.info(ast.to_string(&expr))
+}
+
+
 main :: proc() {
-    somestr := "func传伡伢伣"
+    t := tok.tokenizer_create("1 + ( 3 * 4)")
+    tokens: [dynamic]tok.Token
+    // defer tok.tokenizer_destroy(&t)
+    defer delete(tokens)
 
-    fmt.printfln("string length: %d", len(somestr))
-
-
-    fmt.printfln("rune comp: %v", '1')
-    e: ast.Binary
-    e.left_expr =
-    &ast.Unary {
-        operator = tok.Token{type = .MINUS, lexeme = "-"},
-        expr = &ast.Literal{value = tok.Token{type = .NUMBER, lexeme = "123"}},
+    for {
+        if token, ok := tok.tokenizer_next(&t); ok {
+            append(&tokens, token)
+        } else {
+            break
+        }
     }
+    log.info(len(tokens))
+    log.info(len(tokens))
+    log.info(len(tokens))
+    log.info(len(tokens))
+    log.info(len(tokens))
 
-    e.operator = tok.Token {
-        type   = .STAR,
-        lexeme = "*",
-    }
-    e.right_expr =
-    &ast.Grouping {
-        expr = &ast.Literal {
-            value = tok.Token{type = .NUMBER, lexeme = "45.67"},
-        },
-    }
 
-    tree := ast.to_string(&e)
-    fmt.println(tree)
+    parser := p.parser_init(tokens[:])
+    expr := p.parse(&parser)
+    expr_str := ast.to_string(expr)
+    defer delete(expr_str)
+    fmt.printfln("%v", expr)
+    fmt.printfln("%s", ast.to_string(expr))
 }

@@ -14,13 +14,14 @@ Node :: struct {
 Expression :: union {
     ^Unary,
     ^Binary,
-    ^Literal,
+    ^LiteralExpr,
     ^Grouping,
 }
 
-Literal :: struct {
+LiteralExpr :: struct {
     using node: Node,
-    value:      tok.Token,
+    literal:    tok.Literal,
+    lexeme:     string,
 }
 
 Grouping :: struct {
