@@ -5,20 +5,26 @@ import "core:fmt"
 import "core:io"
 import "core:mem"
 import "core:os"
+import "parser"
 import tok "tokenizer"
+import "ast"
 
 run :: proc(line: string) {
     t := tok.tokenizer_create(line)
     defer tok.tokenizer_destroy(&t)
+    tokens: [dynamic]tok.Token
 
     for {
-        if token, done := tok.tokenizer_next(&t); done {
-            fmt.printfln("token: %v", token)
+        if token, ok := tok.tokenizer_next(&t); ok {
+            append(&tokens, token)
         } else {
-            fmt.println("done")
             break
         }
     }
+
+    p := parser.parser_init(tokens[:])
+    expr := parser.parse(&p)
+    fmt.println(ast.to_string(expr))
 }
 
 run_file :: proc(file_name: string) {}

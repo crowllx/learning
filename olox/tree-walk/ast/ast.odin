@@ -1,8 +1,6 @@
 package ast
 
 import tok "../tokenizer"
-import "core:fmt"
-import "core:strings"
 
 
 Node :: struct {

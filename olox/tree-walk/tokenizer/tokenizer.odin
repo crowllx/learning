@@ -70,6 +70,7 @@ TokenType :: enum {
     VAR,
     WHILE,
     EOF,
+    SKIP,
 }
 
 
@@ -129,8 +130,7 @@ tokenizer_next :: proc(t: ^Tokenizer) -> (Token, bool) {
     token: Token
     done := false
     for _ in t.source[t.position:] {
-        c := advance(t)
-        if type, found := scan(t, c); found {
+        if type, found := scan(t); found && type != .SKIP {
             token = token_create(t^, type)
             done = true
             break
@@ -175,6 +175,19 @@ scan_single :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
     case '*':
         result = true
         token_type = .STAR
+    case ' ':
+        result = true
+        token_type = .SKIP
+    case '\r':
+        result = true
+        token_type = .SKIP
+    case '\n':
+        result = true
+        token_type = .SKIP
+        t.line += 1
+        result = true
+        token_type = .SKIP
+    case '\t':
     }
     return token_type, result
 }
@@ -196,58 +209,30 @@ scan_double :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
     case '<':
         result = true
         token_type = check_double(t, '=', .LESS_EQUAL, .LESS)
-    }
-    return token_type, result
-}
-
-@(private = "file")
-scan_skippables :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
-    token_type: TokenType
-    result := false
-    switch c {
     case '/':
         if !is_comment(t, c) {
             result = true
             token_type = .SLASH
         }
-    case ' ':
-        result = true
-    case '\r':
-        result = true
-    case '\n':
-        result = true
-        t.line += 1
-        result = true
-    case '\t':
     }
     return token_type, result
 }
 
 @(private = "file")
-scan :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
+scan :: proc(t: ^Tokenizer) -> (TokenType, bool) {
     result := false
     token_type: TokenType
+    c := advance(t)
 
     if token_type, result = scan_single(t, c); result {
         return token_type, result
-    }
-
-    if token_type, result = scan_double(t, c); result {
+    } else if token_type, result = scan_double(t, c); result {
         return token_type, result
-    }
-
-    if token_type, result = scan_skippables(t, c); result {
-        t.start = t.position
-        return token_type, false
-    }
-
-    // scan lengthy? scan words?
-    if c == '"' {
+    } else if c == '"' {
         find_string_end(t, c)
         result = true
         token_type = .STRING
         return token_type, result
-
     } else if is_digit(c) {
         find_number_end(t, c)
         return .NUMBER, true
@@ -262,7 +247,6 @@ scan :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
             token_type = .IDENTIFIER
         }
         return token_type, true
-
     } else {
         fmt.eprintfln("Unexpected character %r, %d", c, t.position)
         t.start = t.position

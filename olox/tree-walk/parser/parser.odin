@@ -98,6 +98,7 @@ unary :: proc(p: ^Parser) -> ast.Expression {
     if match(p, .BANG, .MINUS) {
         op := p.prev_tok
         right := unary(p)
+        return new_clone(ast.Unary{operator = op, expr = right})
     }
 
     return primary(p)
@@ -201,5 +202,8 @@ advance :: proc(p: ^Parser) -> tok.Token {
 
 @(private)
 peek :: proc(p: ^Parser) -> tok.Token {
-    return p.tokens[p.current]
+    if p.current < len(p.tokens) {
+        return p.tokens[p.current]
+    }
+    return p.prev_tok
 }

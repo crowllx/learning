@@ -1,5 +1,4 @@
 package ast
-import "core:fmt"
 import "core:strings"
 
 // Expression functions
@@ -29,7 +28,7 @@ to_string :: proc {
 }
 
 parenthesize :: proc(name: string, exprs: ..Expression) -> string {
-    sb, err := strings.builder_make_none()
+    sb, _ := strings.builder_make_none()
     defer strings.builder_destroy(&sb)
 
     strings.write_string(&sb, "(")
