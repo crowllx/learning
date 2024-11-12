@@ -36,7 +36,10 @@ parenthesize :: proc(name: string, exprs: ..Expression) -> string {
 
     for e in exprs {
         strings.write_string(&sb, " ")
-        strings.write_string(&sb, to_string(e))
+        sub_expr := to_string(e)
+        defer delete(sub_expr)
+
+        strings.write_string(&sb, sub_expr)
     }
     strings.write_string(&sb, ")")
     return strings.clone(strings.to_string(sb))
@@ -51,7 +54,7 @@ unary_to_string :: proc(e: ^Unary) -> string {
 }
 
 literal_to_string :: proc(e: ^LiteralExpr) -> string {
-    return e.lexeme
+    return strings.clone(e.lexeme)
 }
 
 group_to_string :: proc(e: ^Grouping) -> string {

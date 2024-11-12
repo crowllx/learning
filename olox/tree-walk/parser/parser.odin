@@ -23,12 +23,31 @@ parser_init :: proc(ts: []tok.Token) -> Parser {
     return Parser{tokens = ts}
 }
 
+// memory cleanup for expression trees
+expression_destory :: proc(e: ast.Expression) {
+    switch v in e {
+    case ^ast.Binary:
+        expression_destory(v.left_expr)
+        expression_destory(v.right_expr)
+        free(v)
+    case ^ast.Grouping:
+        expression_destory(v.expr)
+        free(v)
+    case ^ast.Unary:
+        expression_destory(v.expr)
+        free(v)
+    case ^ast.LiteralExpr:
+        free(v)
+    }
+}
+
+// generate an expression tree from a list of tokens
 parse :: proc(p: ^Parser) -> ast.Expression {
     return expression(p)
 }
 
-// private
 
+// private
 @(private)
 expression :: proc(p: ^Parser) -> ast.Expression {
     return equality(p)

@@ -1,5 +1,6 @@
 package tree
 
+import "ast"
 import "core:bufio"
 import "core:fmt"
 import "core:io"
@@ -7,12 +8,12 @@ import "core:mem"
 import "core:os"
 import "parser"
 import tok "tokenizer"
-import "ast"
 
 run :: proc(line: string) {
     t := tok.tokenizer_create(line)
     defer tok.tokenizer_destroy(&t)
     tokens: [dynamic]tok.Token
+    defer delete(tokens)
 
     for {
         if token, ok := tok.tokenizer_next(&t); ok {
@@ -24,7 +25,12 @@ run :: proc(line: string) {
 
     p := parser.parser_init(tokens[:])
     expr := parser.parse(&p)
-    fmt.println(ast.to_string(expr))
+    defer parser.expression_destory(expr)
+
+    expr_str := ast.to_string(expr)
+    defer delete(expr_str)
+
+    fmt.println(expr_str)
 }
 
 run_file :: proc(file_name: string) {}
