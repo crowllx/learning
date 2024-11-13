@@ -25,6 +25,24 @@ InterpretorError :: union {
     mem.Allocator_Error,
 }
 
+
+interpret :: proc(stmts: []ast.Stmt) {
+    for s in stmts {
+        execute_stmt(s) or_break
+    }
+}
+execute_stmt :: proc(stmt: ast.Stmt) -> InterpretorError {
+    val, err := eval(stmt.expr)
+    switch stmt.type {
+    case .PRINT_STMT:
+        fmt.println(val)
+    case .EXPR_STMT:
+    }
+
+    if s, ok := val.(string); ok do delete(s)
+    return err
+}
+
 report_error :: proc(err: InterpretorError) {
     switch e in err {
     case EvaluationError:
@@ -37,7 +55,7 @@ report_error :: proc(err: InterpretorError) {
     }
 }
 eval :: proc(
-    expr: ast.Expression,
+    expr: ast.Expr,
     allocator := context.allocator,
 ) -> (
     val: tok.Literal,
@@ -54,7 +72,7 @@ eval :: proc(
 }
 
 evaluate_expr :: proc(
-    expr: ast.Expression,
+    expr: ast.Expr,
     allocator := context.temp_allocator,
 ) -> (
     val: tok.Literal,

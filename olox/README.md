@@ -44,7 +44,13 @@ def something():
 
 ### grammar 
 
+
 ```
+program     -> statement* EOF ;
+statement   -> expr_stmt | print_stmt ;
+expr_stmt    -> expression ";" ;
+print_stmt  -> "print" expression ";" ;
+
 expression  -> literal
                 | unary
                 | binary

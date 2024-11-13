@@ -9,7 +9,17 @@ Node :: struct {
 
 // Expressions
 
-Expression :: union {
+StmtType :: enum {
+    PRINT_STMT,
+    EXPR_STMT,
+}
+
+Stmt :: struct {
+    type: StmtType,
+    expr: Expr,
+}
+
+Expr :: union {
     ^Unary,
     ^Binary,
     ^LiteralExpr,
@@ -24,18 +34,18 @@ LiteralExpr :: struct {
 
 Grouping :: struct {
     using node: Node,
-    expr:       Expression,
+    expr:       Expr,
 }
 
 Unary :: struct {
     using node: Node,
     operator:   tok.Token,
-    expr:       Expression,
+    expr:       Expr,
 }
 
 Binary :: struct {
     using node: Node,
-    left_expr:  Expression,
+    left_expr:  Expr,
     operator:   tok.Token,
-    right_expr: Expression,
+    right_expr: Expr,
 }

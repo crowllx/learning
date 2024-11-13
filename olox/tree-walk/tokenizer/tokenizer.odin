@@ -211,8 +211,7 @@ scan_single :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
         result = true
         token_type = .SKIP
         t.line += 1
-        result = true
-        token_type = .SKIP
+        t.start = t.position
     case '\t':
     }
     return token_type, result

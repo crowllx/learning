@@ -8,10 +8,10 @@ tasks:
   run:
     deps: [build]
     cmds:
-      - ./bin/olox-tree-walk
+      - ./bin/olox-tree-walk {{.CLI_ARGS}}
 
   test:
     cmds:
-      - odin test test/ -vet -all-packages -out:bin/test.bin -define:ODIN_TEST_FANCY=false
+      - odin test test -vet -all-packages -out:bin/test.bin
 
 

@@ -10,24 +10,36 @@ import tok "tokenizer"
 
 run :: proc(line: string) {
     t := tok.tokenizer_create(line)
-    defer tok.tokenizer_destroy(&t)
     tokens: [dynamic]tok.Token
+    defer tok.tokenizer_destroy(&t)
     defer delete(tokens)
 
     tok.get_tokens(&t, &tokens)
-
     p := parser.parser_init(tokens[:])
-    expr := parser.parse(&p)
-    defer parser.expression_destory(expr)
+    stmts := parser.parse(&p)
+    defer parser.statements_destroy(stmts)
 
-    val, err := eval(expr)
-    defer tok.literal_destroy(val)
-    if err != nil do return
-
-    fmt.println(val)
+    interpret(stmts)
 }
 
-run_file :: proc(file_name: string) {}
+run_file :: proc(file_name: string) {
+    if data, ok := os.read_entire_file(file_name); ok {
+        t := tok.tokenizer_create(string(data))
+        tokens: [dynamic]tok.Token
+        defer tok.tokenizer_destroy(&t)
+        defer delete(tokens)
+        defer delete(data)
+
+        tok.get_tokens(&t, &tokens)
+        p := parser.parser_init(tokens[:])
+        stmts := parser.parse(&p)
+        defer parser.statements_destroy(stmts)
+
+        interpret(stmts)
+    } else {
+        fmt.eprintln("Error reading file.")
+    }
+}
 
 run_prompt :: proc() -> io.Error {
     r: bufio.Reader

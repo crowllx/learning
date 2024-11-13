@@ -1,10 +1,10 @@
-package ast
+package ast 
 import "core:strings"
 
 // Expression functions
 // printer to help visualize the tree
 
-expr_to_string :: proc(e: Expression) -> string {
+expr_to_string :: proc(e: Expr) -> string {
     str: string
     switch &v in e {
     case ^Binary:
@@ -27,7 +27,7 @@ to_string :: proc {
     expr_to_string,
 }
 
-parenthesize :: proc(name: string, exprs: ..Expression) -> string {
+parenthesize :: proc(name: string, exprs: ..Expr) -> string {
     sb, _ := strings.builder_make_none()
     defer strings.builder_destroy(&sb)
 
