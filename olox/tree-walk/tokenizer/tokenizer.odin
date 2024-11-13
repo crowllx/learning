@@ -80,11 +80,16 @@ Literal :: union {
     string,
     f64,
 }
+
 Token :: struct {
     type:    TokenType,
     line:    int,
     lexeme:  string,
     literal: Literal,
+}
+
+literal_destroy :: proc(literal: Literal) {
+    if s, ok := literal.(string); ok do delete(s)
 }
 
 @(private = "file")

@@ -1,6 +1,5 @@
 package tree
 
-import "ast"
 import "core:bufio"
 import "core:fmt"
 import "core:io"
@@ -15,25 +14,16 @@ run :: proc(line: string) {
     tokens: [dynamic]tok.Token
     defer delete(tokens)
 
-    for {
-        if token, ok := tok.tokenizer_next(&t); ok {
-            append(&tokens, token)
-        } else {
-            break
-        }
-    }
+    tok.get_tokens(&t, &tokens)
 
     p := parser.parser_init(tokens[:])
     expr := parser.parse(&p)
     defer parser.expression_destory(expr)
 
-    expr_str := ast.to_string(expr)
-    defer delete(expr_str)
+    val, err := eval(expr)
+    defer tok.literal_destroy(val)
+    if err != nil do return
 
-    val, err := evaluate_expr(expr)
-    if err != nil {
-        fmt.println(err)
-    }
     fmt.println(val)
 }
 

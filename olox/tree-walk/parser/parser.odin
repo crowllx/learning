@@ -8,7 +8,6 @@ Parser :: struct {
     tokens:   []tok.Token,
     current:  int,
     prev_tok: tok.Token,
-    errors:   [dynamic]ParsingError,
 }
 
 ParsingError :: struct {
@@ -172,7 +171,7 @@ synchronize :: proc(p: ^Parser) {
 @(private)
 consume :: proc(p: ^Parser, type: tok.TokenType, msg: string) -> tok.Token {
     if check(p, type) do return advance(p)
-    append(&p.errors, ParsingError{msg = msg})
+    // some error handling need to happen
     return peek(p)
 }
 
@@ -183,8 +182,6 @@ error :: proc(p: ^Parser, token: tok.Token, msg: string) {
     } else {
         fmt.eprintfln("%d at '%s' %s", token.line, token.lexeme, msg)
     }
-
-    append(&p.errors, ParsingError{msg = msg})
 }
 
 @(private)
