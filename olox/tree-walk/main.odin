@@ -30,7 +30,11 @@ run :: proc(line: string) {
     expr_str := ast.to_string(expr)
     defer delete(expr_str)
 
-    fmt.println(expr_str)
+    val, err := evaluate_expr(expr)
+    if err != nil {
+        fmt.println(err)
+    }
+    fmt.println(val)
 }
 
 run_file :: proc(file_name: string) {}
@@ -42,7 +46,7 @@ run_prompt :: proc() -> io.Error {
 
     for {
         line := bufio.reader_read_string(&r, '\n') or_return
-        // defer delete(line)
+        defer delete(line)
         run(line)
     }
 }

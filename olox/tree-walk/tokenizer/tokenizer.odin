@@ -1,6 +1,7 @@
 package tokenizer
 import "core:fmt"
 import "core:strconv"
+import "core:strings"
 import "core:unicode/utf8"
 
 @(private = "file")
@@ -78,7 +79,6 @@ Literal :: union {
     bool,
     string,
     f64,
-    int,
 }
 Token :: struct {
     type:    TokenType,
@@ -119,13 +119,33 @@ Tokenizer :: struct {
 }
 
 tokenizer_create :: proc(src: string) -> Tokenizer {
-    return Tokenizer{source = src}
+    return Tokenizer{source = strings.clone(src)}
 }
 
 tokenizer_destroy :: proc(t: ^Tokenizer) {
     delete(t.source)
 }
 
+tokenizer_reset :: proc(t: ^Tokenizer, src: string) {
+    t.start = 0
+    t.line = 0
+    t.position = 0
+    delete(t.source)
+    t.source = strings.clone(src)
+}
+
+get_tokens :: proc(t: ^Tokenizer, buf: ^[dynamic]Token) -> int {
+    count := 0
+    for {
+        if token, ok := tokenizer_next(t); ok {
+            append(buf, token)
+            count += 1
+        } else {
+            break
+        }
+    }
+    return count
+}
 tokenizer_next :: proc(t: ^Tokenizer) -> (Token, bool) {
     token: Token
     done := false
@@ -178,6 +198,7 @@ scan_single :: proc(t: ^Tokenizer, c: rune) -> (TokenType, bool) {
     case ' ':
         result = true
         token_type = .SKIP
+        t.start = t.position
     case '\r':
         result = true
         token_type = .SKIP

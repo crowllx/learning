@@ -12,6 +12,6 @@ tasks:
 
   test:
     cmds:
-      - odin test tree-walk -vet -all-packages -out:bin/olox-tree-walk
+      - odin test test/ -vet -all-packages -out:bin/test.bin -define:ODIN_TEST_FANCY=false
 
 
