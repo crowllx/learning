@@ -47,12 +47,14 @@ run_prompt :: proc() -> io.Error {
     r: bufio.Reader
     bufio.reader_init(&r, os.stream_from_handle(os.stdin))
     defer bufio.reader_destroy(&r)
+    defer cleanup()
 
     for {
         line := bufio.reader_read_string(&r, '\n') or_return
         defer delete(line)
         run(line)
     }
+    return nil
 }
 
 main :: proc() {
@@ -77,7 +79,7 @@ main :: proc() {
     }
 
     for _, leak in alloc.allocation_map {
-        fmt.eprintln("Memory Leak: %v %v", leak.location, leak.size)
+        fmt.eprintfln("Memory Leak: %v %v", leak.location, leak.size)
     }
     for bad_free, _ in alloc.bad_free_array {
         fmt.eprintfln("Bad free %v, %v", bad_free.location, bad_free.memory)

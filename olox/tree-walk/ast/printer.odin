@@ -1,4 +1,4 @@
-package ast 
+package ast
 import "core:strings"
 
 // Expression functions
@@ -15,6 +15,7 @@ expr_to_string :: proc(e: Expr) -> string {
         str = literal_to_string(v)
     case ^Grouping:
         str = group_to_string(v)
+    case Variable:
     }
     return str
 }

@@ -7,6 +7,28 @@ import "core:strings"
 import "parser"
 import tok "tokenizer"
 
+@(private = "file")
+env: Environment
+
+@(private = "file")
+Environment :: struct {
+    globals: map[string]tok.Literal,
+}
+
+
+// clean up allocations for global environment
+cleanup :: proc() {
+    cleanup_variables(env.globals)
+}
+
+@(private = "file")
+cleanup_variables :: proc(m: map[string]tok.Literal) {
+    for k, v in m {
+        delete(k)
+        if s, ok := v.(string); ok do delete(s)
+    }
+    delete(m)
+}
 
 EvaluationError :: struct {
     msg:  string,
@@ -20,14 +42,19 @@ TypeError :: struct {
     line:  int,
 }
 
+UndefinedVar :: struct {
+    name: string,
+    line: int,
+}
+
 InterpretorError :: union {
     EvaluationError,
     TypeError,
     mem.Allocator_Error,
     parser.UnexpectedToken,
     parser.MissingToken,
+    UndefinedVar,
 }
-
 
 interpret :: proc(stmts: []ast.Stmt, errs: []parser.ParsingError) {
     for s in stmts {
@@ -51,7 +78,8 @@ execute_stmt :: proc(stmt: ast.Stmt) -> InterpretorError {
         fmt.println(val)
     case .EXPR_STMT:
     case .DECL:
-        fmt.println("variable declared")
+        env.globals[strings.clone(stmt.id)] = val
+        return nil
     }
 
     if s, ok := val.(string); ok do delete(s)
@@ -70,6 +98,8 @@ report_error :: proc(err: InterpretorError) {
         fmt.printfln("%s [ line %d]", e.msg, e.token.line)
     case mem.Allocator_Error:
         fmt.eprintln(e)
+    case UndefinedVar:
+        fmt.eprintfln("Undefined Variable %s [line %d]", e.name, e.line)
     case:
     }
 }
@@ -93,7 +123,7 @@ eval :: proc(
     return val, err
 }
 
-
+@(private = "file")
 evaluate_expr :: proc(
     expr: ast.Expr,
     allocator := context.temp_allocator,
@@ -111,6 +141,8 @@ evaluate_expr :: proc(
         val, err = evaluate_expr(t.expr)
     case ^ast.LiteralExpr:
         val = t.literal
+    case ast.Variable:
+        val = get_variable(t.lexeme) or_return
     }
 
     return val, nil
@@ -204,4 +236,16 @@ eval_binary :: proc(expr: ^ast.Binary) -> (val: tok.Literal, err: InterpretorErr
         }
     }
     return val, nil
+}
+
+
+// Environment 
+
+
+get_variable :: proc(variable_name: string) -> (tok.Literal, InterpretorError) {
+    if v, ok := env.globals[variable_name]; ok {
+        return v, nil
+    }
+
+    return nil, UndefinedVar{name = variable_name}
 }

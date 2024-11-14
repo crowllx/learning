@@ -71,6 +71,7 @@ expression_destory :: proc(e: ast.Expr) {
         free(v)
     case ^ast.LiteralExpr:
         free(v)
+    case ast.Variable:
     }
 }
 
@@ -171,6 +172,11 @@ primary :: proc(p: ^Parser) -> (exor: ast.Expr, err: ParsingError) {
             nil
     }
 
+    if match(p, .IDENTIFIER) {
+        return p.prev_tok, nil
+    }
+
+
     if match(p, .LEFT_PAREN) {
         expr := expression(p) or_return
         consume(p, .RIGHT_PAREN, "Expect ')' after expression.")
@@ -197,7 +203,7 @@ synchronize :: proc(p: ^Parser) {
 
 // helpers
 
-@(private)
+@(private = "file")
 consume :: proc(p: ^Parser, type: tok.TokenType, msg: string) -> (tok.Token, ParsingError) {
     if check(p, type) do return advance(p), nil
     // some error handling need to happen

@@ -37,7 +37,7 @@ binary_expression_test :: proc(t: ^testing.T) {
         defer p.expression_destory(expr)
         // defer p.expression_destory(expr)
 
-        val, err := eval.evaluate_expr(expr)
+        val, err := eval.eval(expr)
         testing.expectf(
             t,
             val == expected,
