@@ -11,21 +11,37 @@ Parser :: struct {
 }
 
 MissingToken :: struct {
-    msg: string,
+    msg:   string,
+    token: tok.Token,
+}
+
+UnexpectedToken :: struct {
+    msg:   string,
+    token: tok.Token,
 }
 
 ParsingError :: union {
     MissingToken,
+    UnexpectedToken,
 }
 
 statement :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: ParsingError) {
-    stmt_type: ast.StmtType
-    if match(p, .PRINT) {
-        stmt_type = .PRINT_STMT
+    if match(p, .VAR) {
+        id := consume(p, .IDENTIFIER, "Expect varible name.") or_return
+        if match(p, .EQUAL) {
+            stmt.expr = expression(p) or_return
+        }
+        stmt.id = id.lexeme
+        stmt.type = .DECL
+
+    } else if match(p, .PRINT) {
+        stmt.expr = expression(p) or_return
+        stmt.type = .PRINT_STMT
     } else {
-        stmt_type = .EXPR_STMT
+        stmt.expr = expression(p) or_return
+        stmt.type = .EXPR_STMT
     }
-    stmt.expr = expression(p)
+
     consume(p, .SEMICOLON, "Expect ';' after value.") or_return
     return stmt, nil
 }
@@ -60,82 +76,86 @@ expression_destory :: proc(e: ast.Expr) {
 
 
 // parse a sequence of tokens into statements
-parse :: proc(p: ^Parser, allocator := context.allocator) -> []ast.Stmt {
+parse :: proc(p: ^Parser, allocator := context.allocator) -> ([]ast.Stmt, []ParsingError) {
     buf: [dynamic]ast.Stmt
+    errors: [dynamic]ParsingError
+    encountered_err := false
 
     for !finished(p) {
         stmt, err := statement(p)
         if err != nil {
             expression_destory(stmt.expr)
+            encountered_err = true
+            append(&errors, err)
         } else {
             append(&buf, stmt)
         }
     }
-    return buf[:]
+    return buf[:], errors[:]
 }
 
 
-expression :: proc(p: ^Parser) -> ast.Expr {
+expression :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
     return equality(p)
 }
 
 @(private)
-equality :: proc(p: ^Parser) -> ast.Expr {
-    expr := comparison(p)
+equality :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
+    expr = comparison(p) or_return
 
     for match(p, .BANG_EQUAL, .EQUAL_EQUAL) {
         op := p.prev_tok
-        right := comparison(p)
+        right := comparison(p) or_return
         expr = new_clone(ast.Binary{left_expr = expr, operator = op, right_expr = right})
     }
 
-    return expr
+    return expr, nil
 }
 
 @(private)
-comparison :: proc(p: ^Parser) -> ast.Expr {
-    expr := term(p)
+comparison :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
+    expr = term(p) or_return
 
     for match(p, .GREATER, .GREATER_EQUAL, .LESS, .LESS_EQUAL) {
         op := p.prev_tok
-        right := term(p)
+        right := term(p) or_return
         expr = new_clone(ast.Binary{left_expr = expr, operator = op, right_expr = right})
 
     }
-    return expr
+    return expr, nil
 
 }
 
 @(private)
-term :: proc(p: ^Parser) -> ast.Expr {
-    expr := factor(p)
+term :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
+    expr = factor(p) or_return
 
     for match(p, .MINUS, .PLUS) {
         op := p.prev_tok
-        right := factor(p)
+        right := factor(p) or_return
         expr = new_clone(ast.Binary{left_expr = expr, operator = op, right_expr = right})
     }
-    return expr
+    return expr, nil
 }
 
 @(private)
-factor :: proc(p: ^Parser) -> ast.Expr {
-    expr := unary(p)
+factor :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
+    expr = unary(p) or_return
 
     for match(p, .STAR, .SLASH) {
         op := p.prev_tok
-        right := unary(p)
+        right := unary(p) or_return
         expr = new_clone(ast.Binary{left_expr = expr, operator = op, right_expr = right})
     }
-    return expr
+    return expr, nil
 }
 
 @(private)
-unary :: proc(p: ^Parser) -> ast.Expr {
+unary :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
     if match(p, .BANG, .MINUS) {
         op := p.prev_tok
-        right := unary(p)
-        return new_clone(ast.Unary{operator = op, expr = right})
+        right := unary(p) or_return
+        return new_clone(ast.Unary{operator = op, expr = right}), nil
     }
 
     return primary(p)
@@ -143,18 +163,22 @@ unary :: proc(p: ^Parser) -> ast.Expr {
 
 
 @(private)
-primary :: proc(p: ^Parser) -> ast.Expr {
+primary :: proc(p: ^Parser) -> (exor: ast.Expr, err: ParsingError) {
     if match(p, .NUMBER, .STRING, .FALSE, .TRUE, .NIL) {
-        return new_clone(ast.LiteralExpr{literal = p.prev_tok.literal, lexeme = p.prev_tok.lexeme})
+        return new_clone(
+                ast.LiteralExpr{literal = p.prev_tok.literal, lexeme = p.prev_tok.lexeme},
+            ),
+            nil
     }
 
     if match(p, .LEFT_PAREN) {
-        expr := expression(p)
+        expr := expression(p) or_return
         consume(p, .RIGHT_PAREN, "Expect ')' after expression.")
-        return new_clone(ast.Grouping{expr = expr})
+        return new_clone(ast.Grouping{expr = expr}), nil
     }
-    error(p, peek(p), "Unkown expr")
-    return nil
+
+    advance(p)
+    return nil, UnexpectedToken{msg = "Unexpected token: ", token = peek(p)}
 }
 
 
@@ -177,7 +201,8 @@ synchronize :: proc(p: ^Parser) {
 consume :: proc(p: ^Parser, type: tok.TokenType, msg: string) -> (tok.Token, ParsingError) {
     if check(p, type) do return advance(p), nil
     // some error handling need to happen
-    return peek(p), MissingToken{msg = msg}
+    next_token := peek(p)
+    return next_token, MissingToken{msg = msg, token = next_token}
 }
 
 @(private)

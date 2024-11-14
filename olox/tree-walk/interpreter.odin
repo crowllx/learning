@@ -4,6 +4,7 @@ import "ast"
 import "core:fmt"
 import "core:mem"
 import "core:strings"
+import "parser"
 import tok "tokenizer"
 
 
@@ -23,20 +24,34 @@ InterpretorError :: union {
     EvaluationError,
     TypeError,
     mem.Allocator_Error,
+    parser.UnexpectedToken,
+    parser.MissingToken,
 }
 
 
-interpret :: proc(stmts: []ast.Stmt) {
+interpret :: proc(stmts: []ast.Stmt, errs: []parser.ParsingError) {
     for s in stmts {
         execute_stmt(s) or_break
     }
+
+    for e in errs {
+        switch err in e {
+        case parser.UnexpectedToken:
+            report_error(err)
+        case parser.MissingToken:
+            report_error(err)
+        }
+    }
 }
+
 execute_stmt :: proc(stmt: ast.Stmt) -> InterpretorError {
     val, err := eval(stmt.expr)
     switch stmt.type {
     case .PRINT_STMT:
         fmt.println(val)
     case .EXPR_STMT:
+    case .DECL:
+        fmt.println("variable declared")
     }
 
     if s, ok := val.(string); ok do delete(s)
@@ -49,11 +64,18 @@ report_error :: proc(err: InterpretorError) {
         fmt.printfln("%s, [line %d]", e.msg, e.line)
     case TypeError:
         fmt.printfln("%s, [line %d]", e.msg, e.line)
+    case parser.MissingToken:
+        fmt.printfln("%s [line %d]", e.msg, e.token.line)
+    case parser.UnexpectedToken:
+        fmt.printfln("%s [ line %d]", e.msg, e.token.line)
     case mem.Allocator_Error:
         fmt.eprintln(e)
     case:
     }
 }
+
+// wrapper for recursive function evaluate_expr, allows clean up
+// temporary allocator once the expression is evaluated
 eval :: proc(
     expr: ast.Expr,
     allocator := context.allocator,
@@ -70,6 +92,7 @@ eval :: proc(
     free_all(context.temp_allocator)
     return val, err
 }
+
 
 evaluate_expr :: proc(
     expr: ast.Expr,
@@ -100,11 +123,7 @@ evaluate_unary :: proc(expr: ^ast.Unary) -> (val: tok.Literal, err: InterpretorE
     case .MINUS:
         val = -right.(f64)
     case .BANG:
-        if right == nil || right == false {
-            val = true
-        } else {
-            val = false
-        }
+        val = right == nil || right == false
     case:
         return nil, EvaluationError{msg = "Unexpected Unary Operator", line = expr.operator.line}
     }

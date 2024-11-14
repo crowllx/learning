@@ -7,18 +7,24 @@ Node :: struct {
     pos: int,
 }
 
-// Expressions
-
 StmtType :: enum {
     PRINT_STMT,
     EXPR_STMT,
+    DECL,
 }
 
-Stmt :: struct {
+Stmt_base :: struct {
     type: StmtType,
     expr: Expr,
 }
 
+Stmt :: struct {
+    using base: Stmt_base,
+    id:         string,
+}
+
+
+// Expressions
 Expr :: union {
     ^Unary,
     ^Binary,

@@ -16,10 +16,11 @@ run :: proc(line: string) {
 
     tok.get_tokens(&t, &tokens)
     p := parser.parser_init(tokens[:])
-    stmts := parser.parse(&p)
+    stmts, errs := parser.parse(&p)
     defer parser.statements_destroy(stmts)
+    defer delete(errs)
 
-    interpret(stmts)
+    interpret(stmts, errs)
 }
 
 run_file :: proc(file_name: string) {
@@ -32,10 +33,11 @@ run_file :: proc(file_name: string) {
 
         tok.get_tokens(&t, &tokens)
         p := parser.parser_init(tokens[:])
-        stmts := parser.parse(&p)
+        stmts, errs := parser.parse(&p)
         defer parser.statements_destroy(stmts)
+        defer delete(errs)
 
-        interpret(stmts)
+        interpret(stmts, errs)
     } else {
         fmt.eprintln("Error reading file.")
     }

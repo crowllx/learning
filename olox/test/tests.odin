@@ -33,7 +33,7 @@ binary_expression_test :: proc(t: ^testing.T) {
         clear(&tokens)
         tok.get_tokens(&tokenizer, &tokens)
         parser := p.parser_init(tokens[:])
-        expr := p.expression(&parser)
+        expr, _ := p.expression(&parser)
         defer p.expression_destory(expr)
         // defer p.expression_destory(expr)
 
