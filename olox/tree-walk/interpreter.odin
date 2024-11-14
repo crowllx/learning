@@ -78,7 +78,12 @@ execute_stmt :: proc(stmt: ast.Stmt) -> InterpretorError {
         fmt.println(val)
     case .EXPR_STMT:
     case .DECL:
-        env.globals[strings.clone(stmt.id)] = val
+        // copy key if its a new entry
+        if stmt.id in env.globals {
+            env.globals[stmt.id] = val
+        } else {
+            env.globals[strings.clone(stmt.id)] = val
+        }
         return nil
     }
 
