@@ -30,10 +30,16 @@ Expr :: union {
     ^Binary,
     ^LiteralExpr,
     ^Grouping,
+    ^Assignment,
     Variable,
 }
 
 Variable :: tok.Token
+
+Assignment :: struct {
+    identifier: Variable,
+    value:      Expr,
+}
 
 LiteralExpr :: struct {
     using node: Node,

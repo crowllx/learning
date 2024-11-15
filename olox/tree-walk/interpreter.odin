@@ -148,6 +148,12 @@ evaluate_expr :: proc(
         val = t.literal
     case ast.Variable:
         val = get_variable(t.lexeme) or_return
+    case ^ast.Assignment:
+        val = evaluate_expr(t.value) or_return
+        if !(t.identifier.lexeme in env.globals) {
+            return val, UndefinedVar{name = t.identifier.lexeme, line = t.identifier.line}
+        }
+        env.globals[t.identifier.lexeme] = val
     }
 
     return val, nil

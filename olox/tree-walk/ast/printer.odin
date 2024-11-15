@@ -4,6 +4,8 @@ import "core:strings"
 // Expression functions
 // printer to help visualize the tree
 
+
+// TODO: add assignment / variablle to strings?
 expr_to_string :: proc(e: Expr) -> string {
     str: string
     switch &v in e {
@@ -16,6 +18,7 @@ expr_to_string :: proc(e: Expr) -> string {
     case ^Grouping:
         str = group_to_string(v)
     case Variable:
+    case ^Assignment:
     }
     return str
 }

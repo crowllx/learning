@@ -72,6 +72,9 @@ expression_destory :: proc(e: ast.Expr) {
     case ^ast.LiteralExpr:
         free(v)
     case ast.Variable:
+    case ^ast.Assignment:
+        expression_destory(v.value)
+        free(v)
     }
 }
 
@@ -97,7 +100,24 @@ parse :: proc(p: ^Parser, allocator := context.allocator) -> ([]ast.Stmt, []Pars
 
 
 expression :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
-    return equality(p)
+    return assignment(p)
+}
+
+@(private)
+assignment :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
+    expr = equality(p) or_return
+
+    if match(p, .EQUAL) {
+        v, ok := expr.(ast.Variable)
+        if !ok {
+            return nil, UnexpectedToken{token = p.prev_tok, msg = "Expected identifier"}
+        }
+        value := expression(p) or_return
+        expr = new_clone(ast.Assignment{identifier = v, value = value})
+    }
+
+    return expr, err
+
 }
 
 @(private)
