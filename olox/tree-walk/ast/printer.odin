@@ -17,7 +17,7 @@ expr_to_string :: proc(e: Expr) -> string {
         str = literal_to_string(v)
     case ^Grouping:
         str = group_to_string(v)
-    case Variable:
+    case ^Variable:
     case ^Assignment:
     }
     return str

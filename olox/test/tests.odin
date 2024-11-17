@@ -34,8 +34,7 @@ binary_expression_test :: proc(t: ^testing.T) {
         tok.get_tokens(&tokenizer, &tokens)
         parser := p.parser_init(tokens[:])
         expr, _ := p.expression(&parser)
-        defer p.expression_destory(expr)
-        // defer p.expression_destory(expr)
+        defer p.expression_destroy(expr)
 
         val, err := eval.eval(expr)
         testing.expectf(
@@ -47,5 +46,34 @@ binary_expression_test :: proc(t: ^testing.T) {
             err,
             k,
         )
+    }
+}
+
+@(test)
+statements_test :: proc(t: ^testing.T) {
+    tests := map[string]bool {
+        "var x = 13;"     = false,
+        "var x = 13"      = true,
+        "{ var y = 3 }"   = true,
+        "{ var x = 3; }"  = false,
+        "1 < 3 == false;" = false,
+        "1 < 3 == false"  = true,
+    }
+    defer delete(tests)
+
+    for k, v in tests {
+        stmts, errs := p.parse(k)
+        defer {
+            for s in stmts {
+                p.statement_destroy(s)
+            }
+            delete(stmts)
+            delete(errs)
+        }
+        ls := len(stmts)
+        le := len(errs)
+        _ = ls
+        _ = le
+        _ = v
     }
 }

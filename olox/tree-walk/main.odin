@@ -6,36 +6,31 @@ import "core:io"
 import "core:mem"
 import "core:os"
 import "parser"
-import tok "tokenizer"
 
 run :: proc(line: string) {
-    t := tok.tokenizer_create(line)
-    tokens: [dynamic]tok.Token
-    defer tok.tokenizer_destroy(&t)
-    defer delete(tokens)
+    stmts, errs := parser.parse(line)
+    defer {
+        for s in stmts {
+            parser.statement_destroy(s)
+        }
+        delete(stmts)
+        delete(errs)
+    }
 
-    tok.get_tokens(&t, &tokens)
-    p := parser.parser_init(tokens[:])
-    stmts, errs := parser.parse(&p)
-    defer parser.statements_destroy(stmts)
-    defer delete(errs)
-
+    fmt.printfln("errs: %v", errs)
     interpret(stmts, errs)
 }
 
 run_file :: proc(file_name: string) {
     if data, ok := os.read_entire_file(file_name); ok {
-        t := tok.tokenizer_create(string(data))
-        tokens: [dynamic]tok.Token
-        defer tok.tokenizer_destroy(&t)
-        defer delete(tokens)
-        defer delete(data)
-
-        tok.get_tokens(&t, &tokens)
-        p := parser.parser_init(tokens[:])
-        stmts, errs := parser.parse(&p)
-        defer parser.statements_destroy(stmts)
-        defer delete(errs)
+        stmts, errs := parser.parse(string(data))
+        defer {
+            for s in stmts {
+                parser.statement_destroy(s)
+            }
+            delete(stmts)
+            delete(errs)
+        }
 
         interpret(stmts, errs)
     } else {

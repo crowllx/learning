@@ -43,13 +43,13 @@ Expr :: union {
     ^LiteralExpr,
     ^Grouping,
     ^Assignment,
-    Variable,
+    ^Variable,
 }
 
 Variable :: tok.Token
 
 Assignment :: struct {
-    identifier: Variable,
+    identifier: ^Variable,
     value:      Expr,
 }
 

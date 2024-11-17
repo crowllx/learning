@@ -59,7 +59,7 @@ execute_stmt :: proc(stmt: ast.Stmt) -> InterpretorError {
     switch v in stmt {
     // any expression or print
     case ast.Expr_Stmt:
-        val, err = eval(v.expr)
+        val = eval(v.expr) or_return
         switch v.type {
         case .PRINT_STMT:
             fmt.println(val)
@@ -146,7 +146,7 @@ evaluate_expr :: proc(
         val, err = evaluate_expr(t.expr)
     case ^ast.LiteralExpr:
         val = t.literal
-    case ast.Variable:
+    case ^ast.Variable:
         val = get_variable(t.lexeme) or_return
     case ^ast.Assignment:
         val = evaluate_expr(t.value) or_return

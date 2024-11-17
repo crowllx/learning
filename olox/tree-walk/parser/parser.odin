@@ -2,6 +2,7 @@ package parser
 import ast "../ast"
 import tok "../tokenizer"
 import "core:fmt"
+import "core:strings"
 
 
 Parser :: struct {
@@ -32,7 +33,7 @@ statement :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: ParsingError) {
         if match(p, .EQUAL) {
             decl.expr = expression(p) or_return
         }
-        decl.id = id.lexeme
+        decl.id = strings.clone(id.lexeme)
         stmt = decl
     } else if match(p, .PRINT) {
         print_stmt: ast.Expr_Stmt
@@ -44,17 +45,28 @@ statement :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: ParsingError) {
         block: ast.Block
 
         for (!check(p, .RIGHT_BRACE) && !finished(p)) {
-            s := statement(p) or_return
+            s: ast.Stmt
+            s, err = statement(p)
+            if err != nil {
+                statement_destroy(s)
+                for v in block.stmts {
+                    statement_destroy(v)
+
+                }
+                delete(block.stmts)
+                return nil, err
+            }
             append(&block.stmts, s)
         }
         consume(p, .RIGHT_BRACE, "Expect '}' after block.") or_return
 
-        return block, nil
+        stmt = block
     } else {
         expr_stmt: ast.Expr_Stmt
 
         expr_stmt.expr = expression(p) or_return
         expr_stmt.type = .EXPR_STMT
+        stmt = expr_stmt
     }
 
     consume(p, .SEMICOLON, "Expect ';' after value.") or_return
@@ -65,52 +77,66 @@ parser_init :: proc(ts: []tok.Token) -> Parser {
     return Parser{tokens = ts}
 }
 
-statements_destroy :: proc(stmts: []ast.Stmt) {
-    for s in stmts {
-        switch v in s {
-        case ast.Expr_Stmt:
-            expression_destory(v.expr)
-        case ast.Decl:
-            expression_destory(v.expr)
-        case ast.Block:
-            statements_destroy(v.stmts[:])
+statement_destroy :: proc(stmt: ast.Stmt) {
+    switch v in stmt {
+    case ast.Expr_Stmt:
+        expression_destroy(v.expr)
+    case ast.Decl:
+        delete(v.id)
+        expression_destroy(v.expr)
+    case ast.Block:
+        for s in v.stmts {
+            statement_destroy(s)
         }
+        delete(v.stmts)
     }
-    delete(stmts)
 }
+
 // memory cleanup for expression trees
-expression_destory :: proc(e: ast.Expr) {
+expression_destroy :: proc(e: ast.Expr) {
     switch v in e {
     case ^ast.Binary:
-        expression_destory(v.left_expr)
-        expression_destory(v.right_expr)
+        expression_destroy(v.left_expr)
+        expression_destroy(v.right_expr)
         free(v)
     case ^ast.Grouping:
-        expression_destory(v.expr)
+        expression_destroy(v.expr)
         free(v)
     case ^ast.Unary:
-        expression_destory(v.expr)
+        expression_destroy(v.expr)
         free(v)
     case ^ast.LiteralExpr:
+        delete(v.lexeme)
         free(v)
-    case ast.Variable:
+    case ^ast.Variable:
+        delete(v.lexeme)
+        free(v)
     case ^ast.Assignment:
-        expression_destory(v.value)
+        expression_destroy(v.value)
         free(v)
     }
 }
 
 
 // parse a sequence of tokens into statements
-parse :: proc(p: ^Parser, allocator := context.allocator) -> ([]ast.Stmt, []ParsingError) {
+parse :: proc(source: string, allocator := context.allocator) -> ([]ast.Stmt, []ParsingError) {
+    tokenizer := tok.tokenizer_create(source)
+    tokens: [dynamic]tok.Token
+    tok.get_tokens(&tokenizer, &tokens)
     buf: [dynamic]ast.Stmt
     errors: [dynamic]ParsingError
     encountered_err := false
+    parser := parser_init(tokens[:])
 
-    for !finished(p) {
-        stmt, err := statement(p)
+    defer {
+        tok.tokenizer_destroy(&tokenizer)
+        delete(tokens)
+    }
+
+    for !finished(&parser) {
+        stmt, err := statement(&parser)
         if err != nil {
-            statements_destroy({stmt})
+            statement_destroy(stmt)
             encountered_err = true
             append(&errors, err)
         } else {
@@ -130,7 +156,7 @@ assignment :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
     expr = equality(p) or_return
 
     if match(p, .EQUAL) {
-        v, ok := expr.(ast.Variable)
+        v, ok := expr.(^ast.Variable)
         if !ok {
             return nil, UnexpectedToken{token = p.prev_tok, msg = "Expected identifier"}
         }
@@ -209,13 +235,24 @@ unary :: proc(p: ^Parser) -> (expr: ast.Expr, err: ParsingError) {
 primary :: proc(p: ^Parser) -> (exor: ast.Expr, err: ParsingError) {
     if match(p, .NUMBER, .STRING, .FALSE, .TRUE, .NIL) {
         return new_clone(
-                ast.LiteralExpr{literal = p.prev_tok.literal, lexeme = p.prev_tok.lexeme},
+                ast.LiteralExpr {
+                    literal = p.prev_tok.literal,
+                    lexeme = strings.clone(p.prev_tok.lexeme),
+                },
             ),
             nil
     }
 
     if match(p, .IDENTIFIER) {
-        return p.prev_tok, nil
+        return new_clone(
+                tok.Token {
+                    lexeme = strings.clone(p.prev_tok.lexeme),
+                    literal = p.prev_tok.literal,
+                    type = p.prev_tok.type,
+                    line = p.prev_tok.line,
+                },
+            ),
+            nil
     }
 
 
