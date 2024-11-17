@@ -8,27 +8,8 @@ import "parser"
 import tok "tokenizer"
 
 @(private = "file")
-env: Environment
+env := [dynamic]map[string]tok.Literal{make(map[string]tok.Literal)}
 
-@(private = "file")
-Environment :: struct {
-    globals: map[string]tok.Literal,
-}
-
-
-// clean up allocations for global environment
-cleanup :: proc() {
-    cleanup_variables(env.globals)
-}
-
-@(private = "file")
-cleanup_variables :: proc(m: map[string]tok.Literal) {
-    for k, v in m {
-        delete(k)
-        if s, ok := v.(string); ok do delete(s)
-    }
-    delete(m)
-}
 
 EvaluationError :: struct {
     msg:  string,
@@ -72,20 +53,39 @@ interpret :: proc(stmts: []ast.Stmt, errs: []parser.ParsingError) {
 }
 
 execute_stmt :: proc(stmt: ast.Stmt) -> InterpretorError {
-    val, err := eval(stmt.expr)
-    switch stmt.type {
-    case .PRINT_STMT:
-        fmt.println(val)
-    case .EXPR_STMT:
-    case .DECL:
-        // copy key if its a new entry
-        if stmt.id in env.globals {
-            env.globals[stmt.id] = val
+    val: tok.Literal
+    err: InterpretorError
+
+    switch v in stmt {
+    // any expression or print
+    case ast.Expr_Stmt:
+        val, err = eval(v.expr)
+        switch v.type {
+        case .PRINT_STMT:
+            fmt.println(val)
+        case .EXPR_STMT:
+        }
+
+    // declare variable in innermost scope
+    case ast.Decl:
+        val, err = eval(v.expr)
+        scope := &env[len(env) - 1]
+        if v.id in scope {
+            scope[v.id] = val
         } else {
-            env.globals[strings.clone(stmt.id)] = val
+            scope[strings.clone(v.id)] = val
         }
         return nil
+
+    // create new scope before running all of the statements within this block
+    case ast.Block:
+        append(&env, map[string]tok.Literal{})
+        for statement in v.stmts {
+            execute_stmt(statement)
+        }
+        cleanup_variables()
     }
+
 
     if s, ok := val.(string); ok do delete(s)
     return err
@@ -100,7 +100,7 @@ report_error :: proc(err: InterpretorError) {
     case parser.MissingToken:
         fmt.printfln("%s [line %d]", e.msg, e.token.line)
     case parser.UnexpectedToken:
-        fmt.printfln("%s [ line %d]", e.msg, e.token.line)
+        fmt.printfln("%s %v [ line %d]", e.msg, e.token.lexeme, e.token.line)
     case mem.Allocator_Error:
         fmt.eprintln(e)
     case UndefinedVar:
@@ -150,10 +150,11 @@ evaluate_expr :: proc(
         val = get_variable(t.lexeme) or_return
     case ^ast.Assignment:
         val = evaluate_expr(t.value) or_return
-        if !(t.identifier.lexeme in env.globals) {
+        scope := &env[len(env) - 1]
+        if !(t.identifier.lexeme in scope) {
             return val, UndefinedVar{name = t.identifier.lexeme, line = t.identifier.line}
         }
-        env.globals[t.identifier.lexeme] = val
+        scope[t.identifier.lexeme] = val
     }
 
     return val, nil
@@ -249,14 +250,31 @@ eval_binary :: proc(expr: ^ast.Binary) -> (val: tok.Literal, err: InterpretorErr
     return val, nil
 }
 
-
-// Environment 
-
-
 get_variable :: proc(variable_name: string) -> (tok.Literal, InterpretorError) {
-    if v, ok := env.globals[variable_name]; ok {
-        return v, nil
+    #reverse for scope in env {
+        if v, ok := scope[variable_name]; ok {
+            return v, nil
+        }
     }
 
     return nil, UndefinedVar{name = variable_name}
+}
+
+// clean up allocations for global environment
+cleanup :: proc() {
+    length := len(env)
+    for i := 0; i < length; i += 1 {
+        cleanup_variables()
+    }
+}
+
+@(private = "file")
+cleanup_variables :: proc() {
+    m := pop(&env)
+    fmt.printfln("cleaning %v", m)
+    for k, v in m {
+        delete(k)
+        if s, ok := v.(string); ok do delete(s)
+    }
+    delete(m)
 }

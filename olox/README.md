@@ -50,7 +50,11 @@ program     -> declaration* EOF ;
 declaration -> varDecl | statement ;
 
 varDecl     -> "var" IDENTIFIER ( "=" expression )? ";" ;
-statement   -> expr_stmt | print_stmt ;
+statement   -> expr_stmt |
+               print_stmt |
+               block ;
+               
+block ->    -> "{" declaration* "}" ;
 expr_stmt    -> expression ";" ;
 print_stmt  -> "print" expression ";" ;
 

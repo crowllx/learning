@@ -7,20 +7,32 @@ Node :: struct {
     pos: int,
 }
 
+
 StmtType :: enum {
     PRINT_STMT,
     EXPR_STMT,
-    DECL,
 }
-
-Stmt_base :: struct {
-    type: StmtType,
+StmtBase :: struct {
     expr: Expr,
 }
 
-Stmt :: struct {
-    using base: Stmt_base,
+Stmt :: union {
+    Expr_Stmt,
+    Decl,
+    Block,
+}
+Expr_Stmt :: struct {
+    using base: StmtBase,
+    type:  StmtType,
+}
+
+Decl :: struct {
+    using base: StmtBase,
     id:         string,
+}
+
+Block :: struct {
+    stmts: [dynamic]Stmt,
 }
 
 

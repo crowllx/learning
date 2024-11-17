@@ -28,18 +28,33 @@ ParsingError :: union {
 statement :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: ParsingError) {
     if match(p, .VAR) {
         id := consume(p, .IDENTIFIER, "Expect varible name.") or_return
+        decl: ast.Decl
         if match(p, .EQUAL) {
-            stmt.expr = expression(p) or_return
+            decl.expr = expression(p) or_return
         }
-        stmt.id = id.lexeme
-        stmt.type = .DECL
-
+        decl.id = id.lexeme
+        stmt = decl
     } else if match(p, .PRINT) {
-        stmt.expr = expression(p) or_return
-        stmt.type = .PRINT_STMT
+        print_stmt: ast.Expr_Stmt
+        print_stmt.type = .PRINT_STMT
+        print_stmt.expr = expression(p) or_return
+        stmt = print_stmt
+
+    } else if match(p, .LEFT_BRACE) {
+        block: ast.Block
+
+        for (!check(p, .RIGHT_BRACE) && !finished(p)) {
+            s := statement(p) or_return
+            append(&block.stmts, s)
+        }
+        consume(p, .RIGHT_BRACE, "Expect '}' after block.") or_return
+
+        return block, nil
     } else {
-        stmt.expr = expression(p) or_return
-        stmt.type = .EXPR_STMT
+        expr_stmt: ast.Expr_Stmt
+
+        expr_stmt.expr = expression(p) or_return
+        expr_stmt.type = .EXPR_STMT
     }
 
     consume(p, .SEMICOLON, "Expect ';' after value.") or_return
@@ -52,7 +67,14 @@ parser_init :: proc(ts: []tok.Token) -> Parser {
 
 statements_destroy :: proc(stmts: []ast.Stmt) {
     for s in stmts {
-        expression_destory(s.expr)
+        switch v in s {
+        case ast.Expr_Stmt:
+            expression_destory(v.expr)
+        case ast.Decl:
+            expression_destory(v.expr)
+        case ast.Block:
+            statements_destroy(v.stmts[:])
+        }
     }
     delete(stmts)
 }
@@ -88,7 +110,7 @@ parse :: proc(p: ^Parser, allocator := context.allocator) -> ([]ast.Stmt, []Pars
     for !finished(p) {
         stmt, err := statement(p)
         if err != nil {
-            expression_destory(stmt.expr)
+            statements_destroy({stmt})
             encountered_err = true
             append(&errors, err)
         } else {
