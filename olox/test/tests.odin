@@ -50,7 +50,7 @@ binary_expression_test :: proc(t: ^testing.T) {
 }
 
 @(test)
-statements_test :: proc(t: ^testing.T) {
+single_statements_test :: proc(t: ^testing.T) {
     tests := map[string]bool {
         "var x = 13;"     = false,
         "var x = 13"      = true,
@@ -61,8 +61,8 @@ statements_test :: proc(t: ^testing.T) {
     }
     defer delete(tests)
 
-    for k, v in tests {
-        stmts, errs := p.parse(k)
+    for key, should_err in tests {
+        stmts, errs := p.parse(key)
         defer {
             for s in stmts {
                 p.statement_destroy(s)
@@ -72,8 +72,10 @@ statements_test :: proc(t: ^testing.T) {
         }
         ls := len(stmts)
         le := len(errs)
-        _ = ls
-        _ = le
-        _ = v
+        if should_err {
+            testing.expectf(t, le > 0, "expected atleast 1 error")
+        } else {
+            testing.expectf(t, ls > 0, "expected atleast 1 statement input: %s %v", key, errs)
+        }
     }
 }

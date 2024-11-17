@@ -60,7 +60,7 @@ statement :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: ParsingError) {
         }
         consume(p, .RIGHT_BRACE, "Expect '}' after block.") or_return
 
-        stmt = block
+        return block, nil
     } else {
         expr_stmt: ast.Expr_Stmt
 
