@@ -50,12 +50,22 @@ program     -> declaration* EOF ;
 declaration -> varDecl | statement ;
 
 varDecl     -> "var" IDENTIFIER ( "=" expression )? ";" ;
+
 statement   -> expr_stmt |
+               for_stmt | 
+               if_stmt |
                print_stmt |
+               while_stmt |
                block ;
                
+for_stmt    -> "for" "(" ( varDevl | exprStmt | ";" )
+                    expression? ";"
+                    expression? ")" statement ;
+                    
+while_stmt  -> "while" "(" expression ")" statement ;
+if_stmt     -> "if" "(" expression ")" statement ("else" statement)? ;
 block ->    -> "{" declaration* "}" ;
-expr_stmt    -> expression ";" ;
+expr_stmt   -> expression ";" ;
 print_stmt  -> "print" expression ";" ;
 
 expression  -> literal

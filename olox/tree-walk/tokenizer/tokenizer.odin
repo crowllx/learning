@@ -99,7 +99,7 @@ token_create :: proc(t: Tokenizer, type: TokenType) -> Token {
 
     #partial switch type {
     case .STRING:
-        lit = lex
+        lit = lex[1:len(lex) - 1]
     case .NUMBER:
         lit = strconv.atof(lex)
     case .FALSE:

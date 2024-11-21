@@ -8,26 +8,40 @@ Node :: struct {
 }
 
 
-StmtType :: enum {
+Stmt_Type :: enum {
     PRINT_STMT,
     EXPR_STMT,
 }
-StmtBase :: struct {
+Stmt_Base :: struct {
     expr: Expr,
 }
 
 Stmt :: union {
+    If_Stmt,
+    While_Stmt,
     Expr_Stmt,
     Decl,
     Block,
 }
+
+While_Stmt :: struct {
+    condition: Expr,
+    body:      ^Stmt,
+}
+
+If_Stmt :: struct {
+    condition: Expr,
+    then_stmt: ^Stmt,
+    else_stmt: ^Stmt,
+}
+
 Expr_Stmt :: struct {
-    using base: StmtBase,
-    type:  StmtType,
+    using base: Stmt_Base,
+    type:       Stmt_Type,
 }
 
 Decl :: struct {
-    using base: StmtBase,
+    using base: Stmt_Base,
     id:         string,
 }
 
@@ -40,20 +54,27 @@ Block :: struct {
 Expr :: union {
     ^Unary,
     ^Binary,
-    ^LiteralExpr,
+    ^Literal_Expr,
     ^Grouping,
     ^Assignment,
     ^Variable,
+    ^Logic_Expr,
 }
 
 Variable :: tok.Token
 
+
+Logic_Expr :: struct {
+    operator:   tok.Token,
+    left_expr:  Expr,
+    right_expr: Expr,
+}
 Assignment :: struct {
     identifier: ^Variable,
     value:      Expr,
 }
 
-LiteralExpr :: struct {
+Literal_Expr :: struct {
     using node: Node,
     literal:    tok.Literal,
     lexeme:     string,

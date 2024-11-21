@@ -7,7 +7,7 @@ import "core:mem"
 import "core:os"
 import "parser"
 
-run :: proc(line: string) {
+run :: proc(env: ^Env, line: string) {
     stmts, errs := parser.parse(line)
     defer {
         for s in stmts {
@@ -17,12 +17,12 @@ run :: proc(line: string) {
         delete(errs)
     }
 
-    fmt.printfln("errs: %v", errs)
-    interpret(stmts, errs)
+    interpret(env, stmts, errs)
 }
 
 run_file :: proc(file_name: string) {
     if data, ok := os.read_entire_file(file_name); ok {
+        env := env_init()
         stmts, errs := parser.parse(string(data))
         defer {
             for s in stmts {
@@ -32,7 +32,7 @@ run_file :: proc(file_name: string) {
             delete(errs)
         }
 
-        interpret(stmts, errs)
+        interpret(&env, stmts, errs)
     } else {
         fmt.eprintln("Error reading file.")
     }
@@ -41,13 +41,13 @@ run_file :: proc(file_name: string) {
 run_prompt :: proc() -> io.Error {
     r: bufio.Reader
     bufio.reader_init(&r, os.stream_from_handle(os.stdin))
+    env := env_init()
     defer bufio.reader_destroy(&r)
-    defer cleanup()
-
+    defer cleanup(&env)
     for {
         line := bufio.reader_read_string(&r, '\n') or_return
         defer delete(line)
-        run(line)
+        run(&env, line)
     }
     return nil
 }

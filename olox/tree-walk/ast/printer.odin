@@ -13,12 +13,13 @@ expr_to_string :: proc(e: Expr) -> string {
         str = binary_to_string(v)
     case ^Unary:
         str = unary_to_string(v)
-    case ^LiteralExpr:
+    case ^Literal_Expr:
         str = literal_to_string(v)
     case ^Grouping:
         str = group_to_string(v)
     case ^Variable:
     case ^Assignment:
+    case ^Logic_Expr:
     }
     return str
 }
@@ -57,7 +58,7 @@ unary_to_string :: proc(e: ^Unary) -> string {
     return parenthesize(e.operator.lexeme, e.expr)
 }
 
-literal_to_string :: proc(e: ^LiteralExpr) -> string {
+literal_to_string :: proc(e: ^Literal_Expr) -> string {
     return strings.clone(e.lexeme)
 }
 
