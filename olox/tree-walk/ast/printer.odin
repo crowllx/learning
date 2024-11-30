@@ -20,6 +20,7 @@ expr_to_string :: proc(e: Expr) -> string {
     case ^Variable:
     case ^Assignment:
     case ^Logic_Expr:
+    case ^Call:
     }
     return str
 }

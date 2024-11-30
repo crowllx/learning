@@ -2,6 +2,7 @@ package parser
 import ast "../ast"
 import tok "../tokenizer"
 import "core:fmt"
+import "core:log"
 import "core:strings"
 
 
@@ -95,9 +96,59 @@ for_loop :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: Parsing_Error) {
     return body, nil
 }
 
+function :: proc(p: ^Parser, kind: string) -> (stmt: ast.Function, err: Parsing_Error) {
+    name := consume(p, .IDENTIFIER, "Expect function name.") or_return
+    consume(p, .LEFT_PAREN, "Expect '(' after function name.") or_return
+    params: [dynamic]string
+    if !check(p, .RIGHT_PAREN) {
+        for {
+            if len(params) >= 255 {
+                error(p, peek(p), "Can't have more than 255 parameters")
+                // return error here instead
+            }
+            token := consume(p, .IDENTIFIER, "Expect parameter name.") or_return
+            append(&params, token.lexeme)
+            if !match(p, .COMMA) do break
+        }
+    }
+    consume(p, .RIGHT_PAREN, "Expect ')' after parameters.")
+
+    consume(p, .LEFT_BRACE, "Expect '{', before function body.") or_return
+    body := block(p) or_return
+    return ast.Function {
+            params = params[:],
+            name = strings.clone(name.lexeme),
+            body = body.(ast.Block),
+        },
+        nil
+}
+
+block :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: Parsing_Error) {
+
+    block: ast.Block
+
+    for (!check(p, .RIGHT_BRACE) && !finished(p)) {
+        s: ast.Stmt
+        s, err = statement(p)
+        if err != nil {
+            statement_destroy(s)
+            for v in block.stmts {
+                statement_destroy(v)
+
+            }
+            delete(block.stmts)
+            return nil, err
+        }
+        append(&block.stmts, s)
+    }
+    consume(p, .RIGHT_BRACE, "Expect '}' after block.") or_return
+    return block, nil
+}
 statement :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: Parsing_Error) {
     if match(p, .VAR) {
         stmt = declaration(p) or_return
+    } else if match(p, .FUN) {
+        return function(p, "function")
     } else if match(p, .FOR) {
         return for_loop(p)
     } else if match(p, .IF) {
@@ -124,6 +175,16 @@ statement :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: Parsing_Error) {
         print_stmt.expr = expression(p) or_return
         stmt = print_stmt
 
+    } else if match(p, .RETURN) {
+        ret_stmt: ast.Return_Stmt
+        expr: ast.Expr = nil
+
+        if !check(p, .SEMICOLON) {
+            expr = expression(p) or_return
+        }
+        ret_stmt.value = expr
+        stmt = ret_stmt
+
     } else if match(p, .WHILE) {
         consume(p, .LEFT_PAREN, "Expect ( after 'while'.") or_return
         condition := expression(p) or_return
@@ -134,25 +195,7 @@ statement :: proc(p: ^Parser) -> (stmt: ast.Stmt, err: Parsing_Error) {
         return ast.While_Stmt{condition = condition, body = new_clone(body)}, nil
 
     } else if match(p, .LEFT_BRACE) {
-        block: ast.Block
-
-        for (!check(p, .RIGHT_BRACE) && !finished(p)) {
-            s: ast.Stmt
-            s, err = statement(p)
-            if err != nil {
-                statement_destroy(s)
-                for v in block.stmts {
-                    statement_destroy(v)
-
-                }
-                delete(block.stmts)
-                return nil, err
-            }
-            append(&block.stmts, s)
-        }
-        consume(p, .RIGHT_BRACE, "Expect '}' after block.") or_return
-
-        return block, nil
+        return block(p)
     } else {
         expr_stmt: ast.Expr_Stmt
 
@@ -191,6 +234,12 @@ statement_destroy :: proc(stmt: ast.Stmt) {
             statement_destroy(s)
         }
         delete(v.stmts)
+    case ast.Function:
+        statement_destroy(v.body)
+        delete(v.name)
+        delete(v.params)
+    case ast.Return_Stmt:
+        expression_destroy(v.value)
     }
 }
 
@@ -225,6 +274,13 @@ expression_destroy :: proc(e: ast.Expr) {
         expression_destroy(v.left_expr)
         free(v)
 
+    case ^ast.Call:
+        expression_destroy(v.callee)
+        for expr in v.args {
+            expression_destroy(expr)
+        }
+        delete(v.args)
+        free(v)
     }
 }
 
@@ -259,11 +315,25 @@ parse :: proc(source: string, allocator := context.allocator) -> ([]ast.Stmt, []
 
 
 expression :: proc(p: ^Parser) -> (expr: ast.Expr, err: Parsing_Error) {
-    return assignment(p)
+    expr, err = assignment(p)
+    if err != nil {
+        fmt.printfln("freeing")
+        free_all(context.temp_allocator)
+    } else {
+        expr = ast.copy_expr(expr)
+    }
+    return
 }
 
 @(private)
-assignment :: proc(p: ^Parser) -> (expr: ast.Expr, err: Parsing_Error) {
+assignment :: proc(
+    p: ^Parser,
+    allocator := context.temp_allocator,
+) -> (
+    expr: ast.Expr,
+    err: Parsing_Error,
+) {
+    context.allocator = allocator
     expr = logical(p) or_return
 
     if match(p, .EQUAL) {
@@ -352,9 +422,42 @@ unary :: proc(p: ^Parser) -> (expr: ast.Expr, err: Parsing_Error) {
         return new_clone(ast.Unary{operator = op, expr = right}), nil
     }
 
-    return primary(p)
+    return function_call(p)
 }
 
+
+@(private)
+build_function_call :: proc(p: ^Parser, callee: ast.Expr) -> (expr: ast.Expr, err: Parsing_Error) {
+    args: [dynamic]ast.Expr
+    if !check(p, .RIGHT_PAREN) {
+        for {
+            arg := expression(p) or_return
+            append(&args, arg)
+
+            if len(args) > 256 {
+                return nil, Unexpected_Token{msg = "Can't have more than 255 arguments."}
+            }
+            if !match(p, .COMMA) do break
+        }
+    }
+
+    paren := consume(p, .RIGHT_PAREN, "Expect ')' after arguments.") or_return
+
+    return new_clone(ast.Call{args = args[:], paren = paren, callee = callee}), nil
+}
+
+@(private)
+function_call :: proc(p: ^Parser) -> (expr: ast.Expr, err: Parsing_Error) {
+    expr = primary(p) or_return
+    for {
+        if match(p, .LEFT_PAREN) {
+            expr = build_function_call(p, expr) or_return
+        } else {
+            break
+        }
+    }
+    return expr, nil
+}
 
 @(private)
 primary :: proc(p: ^Parser) -> (exor: ast.Expr, err: Parsing_Error) {
@@ -406,6 +509,8 @@ synchronize :: proc(p: ^Parser) {
 
 // helpers
 
+// if this function can be made to either delete or clone msg based on
+// result, and have additional cleanup for errors, we could use more dynamic error msgs
 @(private = "file")
 consume :: proc(p: ^Parser, type: tok.TokenType, msg: string) -> (tok.Token, Parsing_Error) {
     if check(p, type) do return advance(p), nil

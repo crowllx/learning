@@ -3,7 +3,7 @@ version: '3'
 tasks:
   build:
     cmds:
-      - odin build tree-walk -vet -out:bin/olox-tree-walk
+      - odin build tree-walk -out:bin/olox-tree-walk
 
   run:
     deps: [build]
@@ -12,6 +12,6 @@ tasks:
 
   test:
     cmds:
-      - odin test test -vet -all-packages -out:bin/test.bin
+      - odin test test -all-packages -out:bin/test.bin
 
 

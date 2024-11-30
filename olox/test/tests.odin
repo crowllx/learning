@@ -1,7 +1,9 @@
 package main
 import eval "../tree-walk"
+import ast "../tree-walk/ast"
 import p "../tree-walk/parser"
 import tok "../tree-walk/tokenizer"
+import "core:log"
 import "core:testing"
 
 @(test)
@@ -108,7 +110,7 @@ if_statement_test :: proc(t: ^testing.T) {
 
 @(test)
 while_statement_test :: proc(t: ^testing.T) {
-    stmt := "var i = 0; while (i < 5) { i = i + 1; }"
+    stmt := "var i = 0; while (i < 5) { i = i + 1; } i;"
     s1, _ := p.parse(stmt)
     env := eval.env_init()
     defer {
@@ -120,8 +122,9 @@ while_statement_test :: proc(t: ^testing.T) {
     }
 
     eval.execute_stmt(&env, s1[0])
-    v, _ := eval.execute_stmt(&env, s1[1])
-    testing.expectf(t, v == 5, "v: %v expected: 5, err: %v", v, s1[1])
+    _, _ = eval.execute_stmt(&env, s1[1])
+    v, _ := eval.execute_stmt(&env, s1[2])
+    testing.expectf(t, v == 5, "v: %v expected: 5, err: %v", v, s1[2])
 }
 
 @(test)
@@ -141,4 +144,86 @@ for_loop_test :: proc(t: ^testing.T) {
     v, _ := eval.execute_stmt(&env, parsed_stmts[2])
 
     testing.expectf(t, v == 0, "v: %v expected: 0, err: %v", v, parsed_stmts[1])
+}
+
+@(test)
+function_call_test :: proc(t: ^testing.T) {
+    stmt := "clock();"
+    parsed_stmts, _ := p.parse(stmt)
+    env := eval.env_init()
+    defer {
+        for s in parsed_stmts {
+            p.statement_destroy(s)
+        }
+        delete(parsed_stmts)
+        eval.cleanup(&env)
+    }
+    val, err := eval.execute_stmt(&env, parsed_stmts[0])
+    _, ok := val.(f64)
+    testing.expectf(t, ok, "Expected number result %v", val)
+    testing.expectf(t, err == nil, "Expected no errors: %v", err)
+
+}
+
+@(test)
+function_declaration_test :: proc(t: ^testing.T) {
+    stmt := "fun echo(msg) { return msg; } echo(\"hello world\");"
+    parsed_stmts, _ := p.parse(stmt)
+    env := eval.env_init()
+    defer {
+        for s in parsed_stmts {
+            p.statement_destroy(s)
+        }
+        delete(parsed_stmts)
+        eval.cleanup(&env)
+    }
+    eval.execute_stmt(&env, parsed_stmts[0])
+    val, _ := eval.execute_stmt(&env, parsed_stmts[1])
+    testing.expectf(t, val == "hello world", "Expected 'hello world' got %v", val)
+}
+
+@(test)
+function_no_return_test :: proc(t: ^testing.T) {
+    stmt := "fun echo(msg) { msg; } echo(\"hello world\");"
+    parsed_stmts, _ := p.parse(stmt)
+    env := eval.env_init()
+    defer {
+        for s in parsed_stmts {
+            p.statement_destroy(s)
+        }
+        delete(parsed_stmts)
+        eval.cleanup(&env)
+    }
+    eval.execute_stmt(&env, parsed_stmts[0])
+    val, _ := eval.execute_stmt(&env, parsed_stmts[1])
+    if s, ok := val.(string); ok do defer delete(s)
+    testing.expectf(t, val == nil, "Expected nil got %v", val)
+}
+
+@(test)
+function_early_return_test :: proc(t: ^testing.T) {
+    stmt := "fun is_positive(num) { if (num < 0) { return false; } return true;}"
+    stmt2 := "is_positive(-2); is_positive(2);"
+    stmt_parsed, _ := p.parse(stmt)
+    stmt2_parsed, _ := p.parse(stmt2)
+    env := eval.env_init()
+    defer {
+        for s in stmt_parsed {
+            p.statement_destroy(s)
+        }
+        delete(stmt_parsed)
+        for s in stmt2_parsed {
+            p.statement_destroy(s)
+        }
+        delete(stmt2_parsed)
+        eval.cleanup(&env)
+    }
+
+    eval.execute_stmt(&env, stmt_parsed[0])
+    val, _ := eval.execute_stmt(&env, stmt2_parsed[0])
+    testing.expectf(t, val == false, "Expect false got %v", val)
+    if s, ok := val.(string); ok do delete(s)
+    val, _ = eval.execute_stmt(&env, stmt2_parsed[1])
+    testing.expectf(t, val == true, "Expect true got %v", val)
+    if s, ok := val.(string); ok do delete(s)
 }

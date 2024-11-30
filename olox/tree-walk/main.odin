@@ -30,6 +30,8 @@ run_file :: proc(file_name: string) {
             }
             delete(stmts)
             delete(errs)
+            delete(data)
+            cleanup(&env)
         }
 
         interpret(&env, stmts, errs)
@@ -74,7 +76,7 @@ main :: proc() {
     }
 
     for _, leak in alloc.allocation_map {
-        fmt.eprintfln("Memory Leak: %v %v", leak.location, leak.size)
+        fmt.eprintfln("Memory Leak: %v %v %v", leak.location, leak.size, leak.memory)
     }
     for bad_free, _ in alloc.bad_free_array {
         fmt.eprintfln("Bad free %v, %v", bad_free.location, bad_free.memory)

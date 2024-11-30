@@ -360,3 +360,16 @@ match :: proc(t: ^Tokenizer, c: rune) -> bool {
 peek :: proc(t: ^Tokenizer) -> rune {
     return utf8.rune_at(t.source, t.position)
 }
+
+
+copy_token :: proc(token: Token) -> Token {
+    new_token: Token
+    new_token.lexeme = strings.clone(token.lexeme)
+    new_token.type = token.type
+    new_token.line = token.line
+    if s, ok := new_token.literal.(string); ok {
+        new_token.literal = strings.clone(s)
+    }
+
+    return new_token
+}

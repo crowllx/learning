@@ -47,17 +47,22 @@ def something():
 
 ```
 program     -> declaration* EOF ;
-declaration -> varDecl | statement ;
+declaration -> func_declaration | varDecl | statement ;
 
+func_declaration -> "fun" function;
+function    -> IDENTIFIER "(" parameters? ")" block ;
 varDecl     -> "var" IDENTIFIER ( "=" expression )? ";" ;
 
 statement   -> expr_stmt |
                for_stmt | 
                if_stmt |
                print_stmt |
+               return_stmt |
                while_stmt |
                block ;
-               
+
+
+return_stmt -> "return" expression? ";" ;
 for_stmt    -> "for" "(" ( varDevl | exprStmt | ";" )
                     expression? ";"
                     expression? ")" statement ;
@@ -91,7 +96,13 @@ comparison  -> term ( ( ">" | ">=" | "<" | <= ) term )* ;
 term        -> factor ( ( "-" | "+" ) factor )* ;
 factor      -> unary ( ( "\" | "*") unary )*;
 unary       -> ( "!" | "-") unary | primary;
+arguments   -> expression ( "," expression)* ;
 primary     -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
                 | IDENTIFIER;
 ```
 
+
+
+### bugs
+
+endless loop when unterminated string is entered
