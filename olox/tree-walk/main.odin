@@ -7,7 +7,7 @@ import "core:mem"
 import "core:os"
 import "parser"
 
-run :: proc(env: ^Env, line: string) {
+run :: proc(v: ^Visitor, line: string) {
     stmts, errs := parser.parse(line)
     defer {
         for s in stmts {
@@ -17,24 +17,27 @@ run :: proc(env: ^Env, line: string) {
         delete(errs)
     }
 
-    interpret(env, stmts, errs)
+    interpret(v, stmts, errs)
 }
 
 run_file :: proc(file_name: string) {
     if data, ok := os.read_entire_file(file_name); ok {
-        env := env_init()
+        visitor := interpretor_init()
         stmts, errs := parser.parse(string(data))
         defer {
             for s in stmts {
                 parser.statement_destroy(s)
             }
+            for e in errs {
+                fmt.eprintln("%v", e)
+            }
             delete(stmts)
             delete(errs)
             delete(data)
-            cleanup(&env)
+            cleanup(visitor.env)
         }
 
-        interpret(&env, stmts, errs)
+        interpret(&visitor, stmts, errs)
     } else {
         fmt.eprintln("Error reading file.")
     }
@@ -43,13 +46,13 @@ run_file :: proc(file_name: string) {
 run_prompt :: proc() -> io.Error {
     r: bufio.Reader
     bufio.reader_init(&r, os.stream_from_handle(os.stdin))
-    env := env_init()
+    visitor := interpretor_init()
     defer bufio.reader_destroy(&r)
-    defer cleanup(&env)
+    defer cleanup(visitor.env)
     for {
         line := bufio.reader_read_string(&r, '\n') or_return
         defer delete(line)
-        run(&env, line)
+        run(&visitor, line)
     }
     return nil
 }

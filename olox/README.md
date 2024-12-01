@@ -105,4 +105,8 @@ primary     -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
 
 ### bugs
 
-endless loop when unterminated string is entered
+endless loop when unterminated string is entered?
+
+closures sometimes failing to capture causing Undefined Variables,
+works majority of the time so unsure what the deal is.
+
