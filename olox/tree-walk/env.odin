@@ -94,7 +94,6 @@ delete_data :: proc(d: Data) {
             }
             delete(var.params)
             delete(var.name)
-            fmt.eprintfln("closure %v", var.closure)
             tmp := var.closure
             for tmp.prev_env != nil {
                 tmp = cleanup_env(var.closure)

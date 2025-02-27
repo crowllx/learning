@@ -1,3 +1,5 @@
+#+feature dynamic-literals
+
 package tokenizer
 import "core:fmt"
 import "core:strconv"

@@ -165,7 +165,7 @@ visit_expr_stmt :: proc(v: ^Visitor, stmt: ast.Expr_Stmt) -> (data: Data, err: E
     if stmt.type == .PRINT_STMT {
         fmt.println(data)
     }
-    return data, err
+    return 
 }
 
 visit_decl_stmt :: proc(v: ^Visitor, stmt: ast.Decl) -> (data: Data, err: Error) {
@@ -355,6 +355,7 @@ visit_grouping :: proc(v: ^Visitor, expr: ^ast.Grouping) -> (data: Data, err: Er
 }
 
 literal :: ast.Literal_Expr
+
 visit_literal_expr :: proc(i: ^Visitor, expr: ^literal) -> (data: Data, err: Error) {
     return expr.literal, nil
 }
@@ -394,84 +395,6 @@ interpret :: proc(v: ^Visitor, stmts: []ast.Stmt, errs: []parser.Parsing_Error) 
     }
 }
 
-// execute_stmt :: proc(env: ^Env, stmt: ast.Stmt) -> (val: Data, err: Error) {
-//     switch v in stmt {
-//     // any expression or print
-//     case ast.Expr_Stmt:
-//         val = evaluate_expr(env, v.expr) or_return
-//         switch v.type {
-//         case .PRINT_STMT:
-//             fmt.println(val)
-//         case .EXPR_STMT:
-//         }
-
-//     // declare variable in innermost scope
-//     case ast.Decl:
-//         val, err = eval(env, v.expr)
-//         declare_variable(env, v.id, val)
-//         return val, nil
-
-//     // create new scope before running all of the statements within this block
-//     case ast.If_Stmt:
-//         c := evaluate_expr(env, v.condition) or_return
-
-//         if c.(Literal) == false || c == nil {
-//             val, err = execute_stmt(env, v.else_stmt^)
-//         } else {
-//             val, err = execute_stmt(env, v.then_stmt^)
-//         }
-
-//     case ast.While_Stmt:
-//         condition := evaluate_expr(env, v.condition) or_return
-//         env := env_init(env)
-//         defer cleanup_env(env)
-
-//         for is_truthy(condition.(Literal)) {
-//             val, err = execute_block(env, v.body^.(ast.Block))
-//             condition = evaluate_expr(env, v.condition) or_return
-//         }
-
-
-//     case ast.Block:
-//         new_scope: map[string]tok.Literal
-//         env := env_init(env)
-//         defer cleanup_env(env)
-//         val, err = execute_block(env, v)
-
-//     case ast.Function:
-//         params: [dynamic]string
-
-//         for id in v.params {
-//             append(&params, strings.clone(id))
-//         }
-//         body_ptr := cast(ast.Stmt)v.body
-
-//         closure := capture_closure(env)
-
-//         func := Func {
-//             arity   = len(v.params),
-//             name    = strings.clone(v.name),
-//             params  = params[:],
-//             body    = ast.copy_stmt(&body_ptr).(ast.Block),
-//             closure = closure,
-//         }
-//         func.call = call_func
-//         map_insert(&env.scope, strings.clone(func.name), new_clone(func))
-
-//     // return stmt as an error to indicate to the interpretor to escape the current block
-//     case ast.Return_Stmt:
-//         val, err = evaluate_expr(env, v.value)
-//         err = v
-//         if v, ok := val.(^Func); ok {
-//             val = copy_func(v)
-//         }
-//     }
-//     // if s, ok := val.(string); ok do delete(s)
-//     return val, err
-// }
-
-// expects a new scope to added to the stack prior to calling,
-// and caller must cleanup that scope
 execute_block :: proc(v: ^Visitor, env: ^Env, block: ast.Block) -> (val: Data, err: Error) {
     visitor := v^
     visitor.env = env

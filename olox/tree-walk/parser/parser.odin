@@ -1,3 +1,5 @@
+#+feature dynamic-literals
+
 package parser
 import ast "../ast"
 import tok "../tokenizer"
