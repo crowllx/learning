@@ -1,6 +1,7 @@
 const std = @import("std");
 const chunk = @import("chunk.zig");
 const debug = @import("debug.zig");
+const vm = @import("vm.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -14,16 +15,18 @@ pub fn main() !void {
 
     try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_RETURN), 1);
     try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_RETURN), 1);
-    try testChunk.writeChunk(55, 1);
+    // try testChunk.writeChunk(55, 1);
 
     for (0..260) |i| {
-        std.debug.print("{d} ", .{i});
         const val: f64 = @floatFromInt(i);
-        std.debug.print("{d}\n", .{val});
         try testChunk.writeConstant(val, 2);
     }
 
-    debug.disassembleChunk(&testChunk, "test chunk");
+    var virtualMachine = vm.VM.new();
+    const res = virtualMachine.interpret(&testChunk);
+    _ = res;
+
+    // debug.disassembleChunk(&testChunk, "test chunk");
 
     // try bw.flush(); // don't forget to flush!
 }

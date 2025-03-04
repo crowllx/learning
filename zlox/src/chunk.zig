@@ -1,5 +1,6 @@
 const std = @import("std");
 const values = @import("value.zig");
+const util = @import("util.zig");
 
 pub const opCode = enum(u8) {
     OP_RETURN,
@@ -40,7 +41,6 @@ pub const Chunk = struct {
     }
 
     pub fn writeConstant(self: *Chunk, val: values.Value, line: u16) !void {
-        std.debug.print("val: {d}\n", .{val});
         try self.constants.append(val);
         const lastIndex = self.constants.items.len - 1;
         if (lastIndex <= 255) {
@@ -49,9 +49,13 @@ pub const Chunk = struct {
         } else {
             try self.writeChunk(@intFromEnum(opCode.OP_CONSTANT_LONG), line);
             const idx: u24 = @intCast(lastIndex);
-            try self.writeChunk(@intCast(idx & 0xff), line);
-            try self.writeChunk(@intCast((idx >> 8) & 0xff), line);
-            try self.writeChunk(@intCast((idx >> 16) & 0xff), line);
+            // try self.writeChunk(@intCast(idx & 0xff), line);
+            // try self.writeChunk(@intCast((idx >> 8) & 0xff), line);
+            // try self.writeChunk(@intCast((idx >> 16) & 0xff), line);
+            const bytes: [3]u8 = util.bytesFromNum(idx);
+            for (bytes) |element| {
+                try self.writeChunk(element, line);
+            }
         }
     }
 
