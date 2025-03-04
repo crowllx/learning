@@ -34,14 +34,6 @@ the book [crafting interpreters](https://craftinginterpreters.com) but using odi
     * inheritance `class example < something`
     * standard library only consists of print and close
 
-
-```python
-def something():
-    return 1 + 2
-
-```
-
-
 ### grammar 
 
 
@@ -100,13 +92,3 @@ arguments   -> expression ( "," expression)* ;
 primary     -> NUMBER | STRING | "true" | "false" | "nil" | "(" expression ")"
                 | IDENTIFIER;
 ```
-
-
-
-### bugs
-
-endless loop when unterminated string is entered?
-
-closures sometimes failing to capture causing Undefined Variables,
-works majority of the time so unsure what the deal is.
-
