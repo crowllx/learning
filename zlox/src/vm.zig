@@ -11,14 +11,25 @@ pub const VM = struct {
     chunk: *chunk.Chunk,
     ip: []u8,
     config: Config,
+    stack: std.ArrayList(values.Value),
 
-    pub fn new() VM {
-        return VM{ .chunk = undefined, .ip = undefined, .config = Config.default() };
+    pub fn init(allocator: std.mem.Allocator) VM {
+        return VM{
+            .chunk = undefined,
+            .ip = undefined,
+            .config = Config.default(),
+            .stack = std.ArrayList(values.Value).init(allocator),
+        };
+    }
+
+    pub fn deinit(self: *VM) void {
+        self.stack.deinit();
     }
 
     pub fn interpret(self: *VM, input: *chunk.Chunk) InterpretResult {
         self.chunk = input;
         self.ip = input.code.items;
+        self.stack.clearRetainingCapacity();
 
         const res = self.run() catch |err| {
             std.debug.print("Error: {}\n", .{err});
@@ -45,21 +56,25 @@ pub const VM = struct {
 
             if (self.config.debug) {
                 _ = debug.disassembleInstruction(off, next, self.chunk);
+                for (self.stack.items) |v| {
+                    std.debug.print("          [ {d:.2} ]\n", .{v});
+                }
             }
 
             switch (instruction) {
-                .OP_RETURN => continue,
+                .OP_RETURN => {
+                    std.debug.assert(self.stack.items.len > 0);
+                    try values.printValue(self.stack.pop());
+                    try stdout.print("\n", .{});
+                    break;
+                },
                 .OP_CONSTANT => {
                     const val = self.readConstant();
-                    try values.printValue(val);
-                    try stdout.print("\n", .{});
+                    try self.stack.append(val);
                 },
                 .OP_CONSTANT_LONG => {
-                    const buf = [3]u8{ self.readByte(), self.readByte(), self.readByte() };
-                    const idx = util.numFromBytes(buf);
-                    const val = self.getConstant(idx);
-                    try values.printValue(val);
-                    try stdout.print("\n", .{});
+                    const val = self.readConstantLong();
+                    try self.stack.append(val);
                 },
             }
         }
@@ -84,5 +99,11 @@ pub const VM = struct {
     fn getConstant(self: *VM, idx: usize) values.Value {
         return self.chunk.constants.items[idx];
     }
-    // fn readConstantLong(self: *VM) values.Value {}
+
+    fn readConstantLong(self: *VM) values.Value {
+        const buf = [3]u8{ self.readByte(), self.readByte(), self.readByte() };
+        const idx = util.numFromBytes(buf);
+        const val = self.getConstant(idx);
+        return val;
+    }
 };

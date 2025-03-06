@@ -13,16 +13,15 @@ pub fn main() !void {
     var testChunk = chunk.Chunk.init(allocator);
     defer testChunk.deinit();
 
-    try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_RETURN), 1);
-    try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_RETURN), 1);
     // try testChunk.writeChunk(55, 1);
 
     for (0..260) |i| {
         const val: f64 = @floatFromInt(i);
         try testChunk.writeConstant(val, 2);
     }
+    try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_RETURN), 1);
 
-    var virtualMachine = vm.VM.new();
+    var virtualMachine = vm.VM.init(allocator);
     const res = virtualMachine.interpret(&testChunk);
     _ = res;
 
