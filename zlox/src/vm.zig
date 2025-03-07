@@ -62,12 +62,6 @@ pub const VM = struct {
             }
 
             switch (instruction) {
-                .OP_RETURN => {
-                    std.debug.assert(self.stack.items.len > 0);
-                    try values.printValue(self.stack.pop());
-                    try stdout.print("\n", .{});
-                    break;
-                },
                 .OP_CONSTANT => {
                     const val = self.readConstant();
                     try self.stack.append(val);
@@ -75,6 +69,35 @@ pub const VM = struct {
                 .OP_CONSTANT_LONG => {
                     const val = self.readConstantLong();
                     try self.stack.append(val);
+                },
+                .OP_NEGATE => {
+                    self.stack.items[self.stack.items.len - 1] = -self.stack.items[self.stack.items.len - 1];
+                },
+                .OP_RETURN => {
+                    std.debug.assert(self.stack.items.len > 0);
+                    try values.printValue(self.stack.pop());
+                    try stdout.print("\n", .{});
+                    break;
+                },
+                .OP_ADD => {
+                    const b = self.stack.pop();
+                    const a = self.stack.pop();
+                    try self.stack.append(a + b);
+                },
+                .OP_SUBTRACT => {
+                    const b = self.stack.pop();
+                    const a = self.stack.pop();
+                    try self.stack.append(a - b);
+                },
+                .OP_MULTIPLY => {
+                    const b = self.stack.pop();
+                    const a = self.stack.pop();
+                    try self.stack.append(a * b);
+                },
+                .OP_DIVIDE => {
+                    const b = self.stack.pop();
+                    const a = self.stack.pop();
+                    try self.stack.append(a / b);
                 },
             }
         }

@@ -15,17 +15,22 @@ pub fn main() !void {
 
     // try testChunk.writeChunk(55, 1);
 
-    for (0..260) |i| {
-        const val: f64 = @floatFromInt(i);
-        try testChunk.writeConstant(val, 2);
-    }
-    try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_RETURN), 1);
+    // for (0..260) |i| {
+    //     const val: f64 = @floatFromInt(i);
+    //     try testChunk.writeConstant(val, 2);
+    // }
+
+    try testChunk.writeConstant(2, 123);
+    try testChunk.writeConstant(3, 123);
+    try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_ADD), 123);
+    try testChunk.writeConstant(3, 123);
+    try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_MULTIPLY), 123);
+    try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_NEGATE), 123);
+    try testChunk.writeChunk(@intFromEnum(chunk.opCode.OP_RETURN), 123);
 
     var virtualMachine = vm.VM.init(allocator);
     const res = virtualMachine.interpret(&testChunk);
     _ = res;
 
     // debug.disassembleChunk(&testChunk, "test chunk");
-
-    // try bw.flush(); // don't forget to flush!
 }

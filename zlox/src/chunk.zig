@@ -3,9 +3,14 @@ const values = @import("value.zig");
 const util = @import("util.zig");
 
 pub const opCode = enum(u8) {
-    OP_RETURN,
     OP_CONSTANT,
     OP_CONSTANT_LONG,
+    OP_ADD,
+    OP_SUBTRACT,
+    OP_MULTIPLY,
+    OP_DIVIDE,
+    OP_NEGATE,
+    OP_RETURN,
 };
 
 const LineInfo = struct {
