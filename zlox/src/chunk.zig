@@ -24,9 +24,11 @@ pub const Chunk = struct {
     lines: std.ArrayList(LineInfo),
 
     pub fn init(allocator: std.mem.Allocator) Chunk {
-        return Chunk{ .code = std.ArrayList(u8).init(allocator), .constants = values.ValueArray.init(allocator), .lines = std.ArrayList(LineInfo).init(allocator) };
-        // chunk.lines.append(LineInfo{ .line = 1, .instructionCount = 0 });
-        // return chunk;
+        return Chunk{
+            .code = std.ArrayList(u8).init(allocator),
+            .constants = values.ValueArray.init(allocator),
+            .lines = std.ArrayList(LineInfo).init(allocator),
+        };
     }
 
     pub fn deinit(self: *Chunk) void {
@@ -54,9 +56,6 @@ pub const Chunk = struct {
         } else {
             try self.writeChunk(@intFromEnum(opCode.OP_CONSTANT_LONG), line);
             const idx: u24 = @intCast(lastIndex);
-            // try self.writeChunk(@intCast(idx & 0xff), line);
-            // try self.writeChunk(@intCast((idx >> 8) & 0xff), line);
-            // try self.writeChunk(@intCast((idx >> 16) & 0xff), line);
             const bytes: [3]u8 = util.bytesFromNum(idx);
             for (bytes) |element| {
                 try self.writeChunk(element, line);

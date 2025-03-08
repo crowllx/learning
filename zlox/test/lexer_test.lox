@@ -1,0 +1,16 @@
+var a = 3;
+a == 4321;
+var c = 123.99;
+// this is a comment
+
+var b = "hello world";
+var b = 'goodbye';
+
+print
+return
+while
+for
+and
+or
+class
+super
