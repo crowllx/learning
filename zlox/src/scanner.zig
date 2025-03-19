@@ -73,8 +73,8 @@ pub fn new(source: []const u8) Scanner {
     };
 }
 
-pub fn scanToken(self: *Scanner) Token {
-    if (self.isAtEnd()) return self.makeToken(.TOKEN_EOF);
+pub fn scanToken(self: *Scanner) ?Token {
+    if (self.isAtEnd()) return null;
 
     self.skipWhitespace();
     self.skipComment();

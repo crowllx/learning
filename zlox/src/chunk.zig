@@ -23,12 +23,14 @@ pub const Chunk = struct {
     constants: values.ValueArray,
     lines: std.ArrayList(LineInfo),
 
-    pub fn init(allocator: std.mem.Allocator) Chunk {
-        return Chunk{
+    pub fn init(allocator: std.mem.Allocator) !Chunk {
+        var c = Chunk{
             .code = std.ArrayList(u8).init(allocator),
             .constants = values.ValueArray.init(allocator),
             .lines = std.ArrayList(LineInfo).init(allocator),
         };
+        try c.lines.append(LineInfo{ .line = 1, .instructionCount = 0 });
+        return c;
     }
 
     pub fn deinit(self: *Chunk) void {

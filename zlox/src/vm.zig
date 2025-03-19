@@ -4,46 +4,52 @@ const values = @import("value.zig");
 const util = @import("util.zig");
 const Config = @import("config.zig");
 const debug = @import("debug.zig");
+const Scanner = @import("scanner.zig");
+const compiler = @import("compile.zig");
 
 const InterpretResult = enum { INTERPRET_OK, INTERPRET_COMPILE_ERROR, INTERPRET_RUNTIME_ERROR };
 
 pub const VM = struct {
-    chunk: *chunk.Chunk,
+    chunk: chunk.Chunk,
     ip: []u8,
-    config: Config,
     stack: std.ArrayList(values.Value),
 
-    pub fn init(allocator: std.mem.Allocator) VM {
-        return VM{
-            .chunk = undefined,
+    pub fn init(allocator: std.mem.Allocator) !VM {
+        var vm = VM{
+            .chunk = try chunk.Chunk.init(allocator),
             .ip = undefined,
-            .config = Config.default(),
             .stack = std.ArrayList(values.Value).init(allocator),
         };
+        vm.ip = vm.chunk.code.items;
+        return vm;
     }
 
     pub fn deinit(self: *VM) void {
         self.stack.deinit();
     }
 
-    pub fn interpret(self: *VM, input: *chunk.Chunk) InterpretResult {
-        self.chunk = input;
-        self.ip = input.code.items;
+    pub fn interpret(self: *VM, alloc: std.mem.Allocator, source: []const u8) InterpretResult {
         self.stack.clearRetainingCapacity();
 
-        const res = self.run() catch |err| {
+        if (!compiler.compile(source, &self.chunk)) {
+            self.chunk.deinit();
+            return .INTERPRET_COMPILE_ERROR;
+        }
+
+        const result = self.run() catch |err| {
             std.debug.print("Error: {}\n", .{err});
             return .INTERPRET_RUNTIME_ERROR;
         };
+        _ = alloc;
 
-        return res;
+        return result;
     }
 
     fn run(self: *VM) !InterpretResult {
         const stdout = std.io.getStdOut().writer();
         var gpa = std.heap.GeneralPurposeAllocator(.{}){};
         const alloc = gpa.allocator();
-        self.config = try Config.load(alloc);
+        _ = alloc;
 
         while (self.ip.len > 0) {
             const off = self.offset();
@@ -54,8 +60,8 @@ pub const VM = struct {
                 return .INTERPRET_COMPILE_ERROR;
             };
 
-            if (self.config.debug) {
-                _ = debug.disassembleInstruction(off, next, self.chunk);
+            if (util.config.debug) {
+                _ = debug.disassembleInstruction(off, next, &self.chunk);
                 for (self.stack.items) |v| {
                     std.debug.print("          [ {d:.2} ]\n", .{v});
                 }

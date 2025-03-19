@@ -1,6 +1,7 @@
 const std = @import("std");
+const Config = @import("config.zig");
 
-const Config = @This();
+pub var config = Config{};
 
 pub fn bytesFromNum(num: u24) [3]u8 {
     var buf = std.mem.zeroes([3]u8);

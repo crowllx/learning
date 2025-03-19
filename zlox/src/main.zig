@@ -3,6 +3,8 @@ const chunk = @import("chunk.zig");
 const debug = @import("debug.zig");
 const vm = @import("vm.zig");
 const Scanner = @import("scanner.zig");
+const Config = @import("config.zig");
+const util = @import("util.zig");
 
 pub fn main() !void {
     var gpa = std.heap.GeneralPurposeAllocator(.{}){};
@@ -26,14 +28,14 @@ pub fn main() !void {
     // const res = virtualMachine.interpret(&testChunk);
     // _ = res;
 
-    var args = std.process.args();
-    _ = args.skip();
+    const args = try std.process.argsAlloc(allocator);
+    Config.load(&util.config);
 
-    if (args.next()) |file_path| {
-        std.debug.print("{s}\n", .{file_path});
-        try runFile(allocator, file_path);
+    if (args.len >= 2) {
+        std.debug.print("{s}\n", .{args[1]});
+        try runFile(allocator, args[1]);
     } else {
-        std.process.exit(50);
+        try std.io.getStdOut().writer().print("not enough args.\n", .{});
     }
 }
 
@@ -52,12 +54,7 @@ fn repl() void {
 fn runFile(allocator: std.mem.Allocator, file_path: []const u8) !void {
     const file_content = try std.fs.cwd().readFileAlloc(allocator, file_path, std.math.maxInt(usize));
     defer allocator.free(file_content);
-
-    var scanner = Scanner.new(file_content);
-
-    var token: Scanner.Token = scanner.scanToken();
-
-    while (token.type != .TOKEN_EOF) : (token = scanner.scanToken()) {
-        token.print();
-    }
+    var virtual_machine = try vm.VM.init(allocator);
+    const result = virtual_machine.interpret(allocator, file_content);
+    _ = result;
 }

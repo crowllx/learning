@@ -4,17 +4,14 @@ const Config = @This();
 
 debug: bool = false,
 
-pub fn load(allocator: std.mem.Allocator) !Config {
+pub fn load(config: *Config) void {
     var args = std.process.args();
-    var config = Config{};
 
     while (args.next()) |arg| {
         if (std.mem.eql(u8, arg, "--debug")) {
             config.debug = true;
         }
     }
-    _ = allocator;
-    return config;
 }
 
 pub fn default() Config {
