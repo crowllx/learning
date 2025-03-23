@@ -65,7 +65,10 @@ pub const VM = struct {
             if (util.config.debug) {
                 _ = debug.disassembleInstruction(off, next, &self.chunk);
                 for (self.stack.items) |v| {
-                    std.debug.print("                [ {d:.2} ]\n", .{v});
+                    switch (v) {
+                        .NUMBER => std.debug.print("                [ {d:.2} ]\n", .{v.NUMBER}),
+                        else => {},
+                    }
                 }
             }
 
@@ -79,7 +82,12 @@ pub const VM = struct {
                     try self.stack.append(val);
                 },
                 .OP_NEGATE => {
-                    self.stack.items[self.stack.items.len - 1] = -self.stack.items[self.stack.items.len - 1];
+                    const val = self.stack.items[self.stack.items.len - 1];
+                    switch (val) {
+                        .NUMBER => self.stack.items[self.stack.items.len - 1] = values.Value{ .NUMBER = -val.NUMBER },
+                        // runtime error?
+                        else => {},
+                    }
                 },
                 .OP_RETURN => {
                     std.debug.assert(self.stack.items.len > 0);
@@ -90,22 +98,38 @@ pub const VM = struct {
                 .OP_ADD => {
                     const b = self.stack.pop();
                     const a = self.stack.pop();
-                    try self.stack.append(a + b);
+
+                    std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+                    std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+                    try self.stack.append(values.Value{ .NUMBER = a.NUMBER + b.NUMBER });
                 },
                 .OP_SUBTRACT => {
                     const b = self.stack.pop();
                     const a = self.stack.pop();
-                    try self.stack.append(a - b);
+
+                    std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+                    std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+                    try self.stack.append(values.Value{ .NUMBER = a.NUMBER - b.NUMBER });
                 },
                 .OP_MULTIPLY => {
                     const b = self.stack.pop();
                     const a = self.stack.pop();
-                    try self.stack.append(a * b);
+
+                    std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+                    std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+                    try self.stack.append(values.Value{ .NUMBER = a.NUMBER * b.NUMBER });
                 },
                 .OP_DIVIDE => {
                     const b = self.stack.pop();
                     const a = self.stack.pop();
-                    try self.stack.append(a / b);
+
+                    std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+                    std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+                    try self.stack.append(values.Value{ .NUMBER = a.NUMBER / b.NUMBER });
                 },
             }
         }

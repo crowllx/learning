@@ -168,7 +168,7 @@ const Parser = struct {
     // Parse number literals
     fn number(self: *Parser) !void {
         const val = try std.fmt.parseFloat(f64, self.previous.data[0..self.previous.length]);
-        try self.emitConstant(val);
+        try self.emitConstant(values.Value{ .NUMBER = val });
     }
 
     // Parse grouping expressions
