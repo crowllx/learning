@@ -20,6 +20,7 @@ pub const VM = struct {
             .ip = undefined,
             .stack = std.ArrayList(values.Value).init(allocator),
         };
+
         vm.ip = vm.chunk.code.items;
         return vm;
     }
@@ -35,6 +36,7 @@ pub const VM = struct {
             self.chunk.deinit();
             return .INTERPRET_COMPILE_ERROR;
         }
+        self.ip = self.chunk.code.items;
 
         const result = self.run() catch |err| {
             std.debug.print("Error: {}\n", .{err});
@@ -63,7 +65,7 @@ pub const VM = struct {
             if (util.config.debug) {
                 _ = debug.disassembleInstruction(off, next, &self.chunk);
                 for (self.stack.items) |v| {
-                    std.debug.print("          [ {d:.2} ]\n", .{v});
+                    std.debug.print("                [ {d:.2} ]\n", .{v});
                 }
             }
 

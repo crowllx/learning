@@ -193,6 +193,9 @@ const Parser = struct {
     fn binary(self: *Parser) void {
         const op_type = self.previous.type;
         // parse rule?
+        const precedence = getRule(op_type).precedence;
+
+        self.parsePrecedence(@enumFromInt(@intFromEnum(precedence) + 1));
 
         _ = switch (op_type) {
             .TOKEN_PLUS => self.emitByte(@intFromEnum(chunk.opCode.OP_ADD)),
@@ -240,5 +243,5 @@ pub fn compile(src: []const u8, dst: *chunk.Chunk) bool {
         std.debug.print("{} when ending compilation", .{err});
     };
 
-    return parser.had_error;
+    return !parser.had_error;
 }
