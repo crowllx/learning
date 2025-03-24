@@ -72,7 +72,7 @@ pub const VM = struct {
                 }
             }
 
-            switch (instruction) {
+            try switch (instruction) {
                 .OP_CONSTANT => {
                     const val = self.readConstant();
                     try self.stack.append(val);
@@ -81,60 +81,124 @@ pub const VM = struct {
                     const val = self.readConstantLong();
                     try self.stack.append(val);
                 },
-                .OP_NEGATE => {
-                    const val = self.stack.items[self.stack.items.len - 1];
-                    switch (val) {
-                        .NUMBER => self.stack.items[self.stack.items.len - 1] = values.Value{ .NUMBER = -val.NUMBER },
-                        // runtime error?
-                        else => {},
-                    }
-                },
                 .OP_RETURN => {
                     std.debug.assert(self.stack.items.len > 0);
                     try values.printValue(self.stack.pop());
                     try stdout.print("\n", .{});
                     break;
                 },
-                .OP_ADD => {
-                    const b = self.stack.pop();
-                    const a = self.stack.pop();
-
-                    std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
-                    std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
-
-                    try self.stack.append(values.Value{ .NUMBER = a.NUMBER + b.NUMBER });
-                },
-                .OP_SUBTRACT => {
-                    const b = self.stack.pop();
-                    const a = self.stack.pop();
-
-                    std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
-                    std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
-
-                    try self.stack.append(values.Value{ .NUMBER = a.NUMBER - b.NUMBER });
-                },
-                .OP_MULTIPLY => {
-                    const b = self.stack.pop();
-                    const a = self.stack.pop();
-
-                    std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
-                    std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
-
-                    try self.stack.append(values.Value{ .NUMBER = a.NUMBER * b.NUMBER });
-                },
-                .OP_DIVIDE => {
-                    const b = self.stack.pop();
-                    const a = self.stack.pop();
-
-                    std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
-                    std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
-
-                    try self.stack.append(values.Value{ .NUMBER = a.NUMBER / b.NUMBER });
-                },
-            }
+                .OP_NEGATE => self.negate(),
+                .OP_ADD => self.add(),
+                .OP_SUBTRACT => self.subtract(),
+                .OP_MULTIPLY => self.multiply(),
+                .OP_DIVIDE => self.divide(),
+                .OP_NOT => self.stack.append(values.Value{ .BOOL = isFalsey(self.stack.pop()) }),
+                .OP_FALSE => self.stack.append(values.Value{ .BOOL = false }),
+                .OP_EQUAL => self.equal(),
+                .OP_GREATER => self.greater(),
+                .OP_LESS => self.less(),
+                .OP_TRUE => self.stack.append(values.Value{ .BOOL = true }),
+                .OP_NIL => self.stack.append(values.Value.NIL),
+            };
         }
 
         return .INTERPRET_OK;
+    }
+
+    fn runtimeError(self: *VM, format: []const u8, args: anytype) void {
+        const ArgsType = @TypeOf(args);
+        const args_type_info = @typeInfo(ArgsType);
+
+        if (args_type_info != .@"struct") {
+            @compileError("expected tuple or struct argument found " ++ @typeName(ArgsType));
+        }
+
+        std.debug.print(format, args);
+        std.debug.print("\n", .{});
+
+        const line = self.chunk.getLine(self.offset());
+        std.debug.print("[line {d} in script\n]", line);
+    }
+
+    fn equal(self: *VM) !void {
+        const b = self.stack.pop();
+        const a = self.stack.pop();
+
+        try self.stack.append(values.Value{ .BOOL = std.meta.eql(a, b) });
+    }
+
+    fn greater(self: *VM) !void {
+        const b = self.stack.pop();
+        const a = self.stack.pop();
+
+        std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+        std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+        try self.stack.append(values.Value{ .BOOL = a.NUMBER > b.NUMBER });
+    }
+
+    fn less(self: *VM) !void {
+        const b = self.stack.pop();
+        const a = self.stack.pop();
+
+        std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+        std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+        try self.stack.append(values.Value{ .BOOL = a.NUMBER < b.NUMBER });
+    }
+
+    fn negate(self: *VM) !void {
+        const val = self.peek();
+        switch (val.*) {
+            .NUMBER => val.* = values.Value{ .NUMBER = -val.NUMBER },
+            .BOOL => val.* = values.Value{ .BOOL = !val.BOOL },
+            // runtime error?
+            else => {},
+        }
+    }
+
+    fn add(self: *VM) !void {
+        const b = self.stack.pop();
+        const a = self.stack.pop();
+
+        std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+        std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+        try self.stack.append(values.Value{ .NUMBER = a.NUMBER + b.NUMBER });
+    }
+
+    fn subtract(self: *VM) !void {
+        const b = self.stack.pop();
+        const a = self.stack.pop();
+
+        std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+        std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+        try self.stack.append(values.Value{ .NUMBER = a.NUMBER - b.NUMBER });
+    }
+
+    fn multiply(self: *VM) !void {
+        const b = self.stack.pop();
+        const a = self.stack.pop();
+
+        std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+        std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+        try self.stack.append(values.Value{ .NUMBER = a.NUMBER * b.NUMBER });
+    }
+
+    fn divide(self: *VM) !void {
+        const b = self.stack.pop();
+        const a = self.stack.pop();
+
+        std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
+        std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
+
+        try self.stack.append(values.Value{ .NUMBER = a.NUMBER / b.NUMBER });
+    }
+
+    fn peek(self: *VM) *values.Value {
+        return &self.stack.items[self.stack.items.len - 1];
     }
 
     fn readByte(self: *VM) u8 {
@@ -162,3 +226,11 @@ pub const VM = struct {
         return val;
     }
 };
+
+fn isFalsey(val: values.Value) bool {
+    return switch (val) {
+        .BOOL => !val.BOOL,
+        .NIL => true,
+        else => false,
+    };
+}

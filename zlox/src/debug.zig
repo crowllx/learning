@@ -29,14 +29,9 @@ pub fn disassembleInstruction(idx: usize, instruction: u8, data: *chunk.Chunk) u
     };
 
     const offset = switch (op) {
-        .OP_RETURN => simpleInstruction("OP_RETURN"),
         .OP_CONSTANT => constInstruction("OP_CONSTANT", data, idx),
         .OP_CONSTANT_LONG => constLongInstruction("OP_CONSTANT_LONG", data, idx),
-        .OP_NEGATE => simpleInstruction("OP_NEGATE"),
-        .OP_ADD => simpleInstruction("OP_ADD"),
-        .OP_SUBTRACT => simpleInstruction("OP_SUBSTRACT"),
-        .OP_MULTIPLY => simpleInstruction("OP_MULTIPLY"),
-        .OP_DIVIDE => simpleInstruction("OP_DIVIDE"),
+        else => simpleInstruction(@tagName(op)),
     };
 
     return offset;

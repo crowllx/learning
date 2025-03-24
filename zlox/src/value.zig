@@ -28,6 +28,8 @@ pub fn printValue(val: Value) !void {
     const stdout = std.io.getStdOut().writer();
     switch (val) {
         .NUMBER => try stdout.print("{d:.2}", .{val.NUMBER}),
-        else => {},
+        .BOOL => try stdout.print("{}", .{val.BOOL}),
+        .NIL => try stdout.print("nil", .{}),
+        // else => {},
     }
 }

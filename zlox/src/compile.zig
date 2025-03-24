@@ -24,49 +24,50 @@ const ExpressionType = enum {
     BINARY,
     UNARY,
     NUMBER,
+    LITERAL,
 };
 
 const RULES = [_]ParseRule{
-    .{ .prefix = .GROUPING, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = .UNARY, .infix = .BINARY, .precedence = .PREC_TERM },
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_TERM },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_FACTOR },
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_FACTOR },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = .NUMBER, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE },
+    .{ .prefix = .GROUPING, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_LEFT_PAREN
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_RIGHT_PAREN]
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_LEFT_BRACE]
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_RIGHT_BRACE
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_COMMA
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_DOT
+    .{ .prefix = .UNARY, .infix = .BINARY, .precedence = .PREC_TERM }, // .TOKEN_MINUS
+    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_TERM }, // .TOKEN_PLUS
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_SEMICOLON
+    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_FACTOR }, // .TOKEN_SLASH
+    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_FACTOR }, // .TOKEN_STAR
+    .{ .prefix = .UNARY, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_BANG
+    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_EQUALITY }, // .TOKEN_BANG_EQUAL
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_EQUAL
+    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_EQUALITY }, // .TOKEN_EQUAL_EQUAL
+    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_GREATER
+    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_GREATER_EQUAL
+    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_LESS
+    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_LESS_EQUAL
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_IDENTIFIER
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_STRING
+    .{ .prefix = .NUMBER, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_NUMBER
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_AND
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_CLASS
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_ELSE
+    .{ .prefix = .LITERAL, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_FALSE
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_FOR
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_FUN
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_IF
+    .{ .prefix = .LITERAL, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_NIL
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_OR
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_PRINT
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_RETURN
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_SUPER
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_THIS
+    .{ .prefix = .LITERAL, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_TRUE
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_VAR
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_WHILE
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_ERROR
+    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_EOF
 };
 
 const ParseRule = struct {
@@ -122,6 +123,11 @@ const Parser = struct {
         try self.chunk.writeChunk(byte, self.previous.line);
     }
 
+    fn emitBytes(self: *Parser, a: u8, b: u8) !void {
+        try self.emitByte(a);
+        try self.emitByte(b);
+    }
+
     fn reportError(self: *Parser, msg: []const u8) void {
         self.errorAt(&self.previous, msg);
     }
@@ -148,11 +154,6 @@ const Parser = struct {
                 debug.disassembleChunk(self.chunk, "code");
             }
         }
-    }
-
-    fn emitBytes(self: *Parser, a: u8, b: u8) void {
-        try self.emitByte(a);
-        try self.emitByte(b);
     }
 
     fn emitConstant(self: *Parser, val: values.Value) !void {
@@ -185,6 +186,7 @@ const Parser = struct {
 
         _ = switch (op_type) {
             .TOKEN_MINUS => self.emitByte(@intFromEnum(chunk.opCode.OP_NEGATE)),
+            .TOKEN_BANG => self.emitByte(@intFromEnum(chunk.opCode.OP_NOT)),
             else => {},
         } catch unreachable;
     }
@@ -194,17 +196,33 @@ const Parser = struct {
         const op_type = self.previous.type;
         // parse rule?
         const precedence = getRule(op_type).precedence;
-
         self.parsePrecedence(@enumFromInt(@intFromEnum(precedence) + 1));
 
         _ = switch (op_type) {
+            .TOKEN_BANG_EQUAL => self.emitBytes(@intFromEnum(chunk.opCode.OP_EQUAL), @intFromEnum(chunk.opCode.OP_NOT)),
+            .TOKEN_EQUAL_EQUAL => self.emitByte(@intFromEnum(chunk.opCode.OP_EQUAL)),
+            .TOKEN_GREATER => self.emitByte(@intFromEnum(chunk.opCode.OP_GREATER)),
+            .TOKEN_GREATER_EQUAL => self.emitBytes(@intFromEnum(chunk.opCode.OP_LESS), @intFromEnum(chunk.opCode.OP_NOT)),
+            .TOKEN_LESS => self.emitByte(@intFromEnum(chunk.opCode.OP_LESS)),
+            .TOKEN_LESS_EQUAL => self.emitBytes(@intFromEnum(chunk.opCode.OP_GREATER), @intFromEnum(chunk.opCode.OP_NOT)),
             .TOKEN_PLUS => self.emitByte(@intFromEnum(chunk.opCode.OP_ADD)),
             .TOKEN_MINUS => self.emitByte(@intFromEnum(chunk.opCode.OP_SUBTRACT)),
             .TOKEN_STAR => self.emitByte(@intFromEnum(chunk.opCode.OP_MULTIPLY)),
             .TOKEN_SLASH => self.emitByte(@intFromEnum(chunk.opCode.OP_DIVIDE)),
             else => {},
         } catch |err| {
-            std.debug.print("{} writing operator {}", .{ err, op_type });
+            std.debug.print("{} writing operator {}\n", .{ err, op_type });
+        };
+    }
+
+    fn literal(self: *Parser) void {
+        _ = switch (self.previous.type) {
+            .TOKEN_FALSE => self.emitByte(@intFromEnum(chunk.opCode.OP_FALSE)),
+            .TOKEN_NIL => self.emitByte(@intFromEnum(chunk.opCode.OP_NIL)),
+            .TOKEN_TRUE => self.emitByte(@intFromEnum(chunk.opCode.OP_TRUE)),
+            else => {},
+        } catch |err| {
+            std.debug.print("{} writing literal {}\n", .{ err, self.previous.type });
         };
     }
 
@@ -214,6 +232,7 @@ const Parser = struct {
             .BINARY => self.binary(),
             .UNARY => self.unary(),
             .NUMBER => self.number() catch unreachable,
+            .LITERAL => self.literal(),
         }
     }
 
