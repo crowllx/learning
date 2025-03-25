@@ -25,6 +25,7 @@ const ExpressionType = enum {
     UNARY,
     NUMBER,
     LITERAL,
+    STRING,
 };
 
 const RULES = [_]ParseRule{
@@ -48,7 +49,7 @@ const RULES = [_]ParseRule{
     .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_LESS
     .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_LESS_EQUAL
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_IDENTIFIER
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_STRING
+    .{ .prefix = .STRING, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_STRING
     .{ .prefix = .NUMBER, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_NUMBER
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_AND
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_CLASS
@@ -89,8 +90,9 @@ const Parser = struct {
     panic_mode: bool,
     scanner: *Scanner,
     chunk: *chunk.Chunk,
+    allocator: std.mem.Allocator,
 
-    fn new(scanner: *Scanner, chk: *chunk.Chunk) Parser {
+    fn new(gpa: std.mem.Allocator, scanner: *Scanner, chk: *chunk.Chunk) Parser {
         return Parser{
             .current = undefined,
             .previous = undefined,
@@ -98,6 +100,7 @@ const Parser = struct {
             .panic_mode = false,
             .scanner = scanner,
             .chunk = chk,
+            .allocator = gpa,
         };
     }
 
@@ -226,6 +229,17 @@ const Parser = struct {
         };
     }
 
+    fn string(self: *Parser) void {
+        const str = self.allocator.dupe(u8, self.previous.data[0..self.previous.length]) catch |err| {
+            std.debug.print("Error copying string: {}\n", .{err});
+            return;
+        };
+
+        self.emitConstant(values.Value{ .STRING = str }) catch |err| {
+            std.debug.print("Error writing string: {}\n", .{err});
+        };
+    }
+
     fn eval(self: *Parser, expr_type: ExpressionType) void {
         switch (expr_type) {
             .GROUPING => self.grouping(),
@@ -233,6 +247,7 @@ const Parser = struct {
             .UNARY => self.unary(),
             .NUMBER => self.number() catch unreachable,
             .LITERAL => self.literal(),
+            .STRING => self.string(),
         }
     }
 
@@ -253,9 +268,9 @@ const Parser = struct {
     }
 };
 
-pub fn compile(src: []const u8, dst: *chunk.Chunk) bool {
+pub fn compile(gpa: std.mem.Allocator, src: []const u8, dst: *chunk.Chunk) bool {
     var scanner = Scanner.new(src);
-    var parser = Parser.new(&scanner, dst);
+    var parser = Parser.new(gpa, &scanner, dst);
     parser.advance();
     parser.expression();
     parser.endCompiler() catch |err| {

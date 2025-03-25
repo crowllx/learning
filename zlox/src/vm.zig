@@ -13,12 +13,16 @@ pub const VM = struct {
     chunk: chunk.Chunk,
     ip: []u8,
     stack: std.ArrayList(values.Value),
+    objects: std.ArrayList(values.Obj),
+    allocator: std.mem.Allocator,
 
-    pub fn init(allocator: std.mem.Allocator) !VM {
+    pub fn init(gpa: std.mem.Allocator) !VM {
         var vm = VM{
-            .chunk = try chunk.Chunk.init(allocator),
+            .chunk = try chunk.Chunk.init(gpa),
             .ip = undefined,
-            .stack = std.ArrayList(values.Value).init(allocator),
+            .stack = std.ArrayList(values.Value).init(gpa),
+            .objects = std.ArrayList(values.Obj).init(gpa),
+            .allocator = gpa,
         };
 
         vm.ip = vm.chunk.code.items;
@@ -27,12 +31,20 @@ pub const VM = struct {
 
     pub fn deinit(self: *VM) void {
         self.stack.deinit();
+        for (self.chunk.constants.items) |constant| {
+            if (std.meta.activeTag(constant) == .STRING) self.allocator.free(constant.STRING);
+        }
+        self.chunk.deinit();
+        for (self.objects.items) |obj| {
+            self.allocator.free(obj.STRING.STRING);
+        }
+        self.objects.deinit();
     }
 
     pub fn interpret(self: *VM, alloc: std.mem.Allocator, source: []const u8) InterpretResult {
         self.stack.clearRetainingCapacity();
 
-        if (!compiler.compile(source, &self.chunk)) {
+        if (!compiler.compile(alloc, source, &self.chunk)) {
             self.chunk.deinit();
             return .INTERPRET_COMPILE_ERROR;
         }
@@ -42,7 +54,6 @@ pub const VM = struct {
             std.debug.print("Error: {}\n", .{err});
             return .INTERPRET_RUNTIME_ERROR;
         };
-        _ = alloc;
 
         return result;
     }
@@ -124,7 +135,12 @@ pub const VM = struct {
         const b = self.stack.pop();
         const a = self.stack.pop();
 
-        try self.stack.append(values.Value{ .BOOL = std.meta.eql(a, b) });
+        std.debug.print("{any}\n", .{std.meta.activeTag(b)});
+
+        try switch (a) {
+            .STRING => self.stack.append(values.Value{ .BOOL = std.mem.eql(u8, a.STRING, b.STRING) }),
+            else => self.stack.append(values.Value{ .BOOL = std.meta.eql(a, b) }),
+        };
     }
 
     fn greater(self: *VM) !void {
@@ -148,7 +164,7 @@ pub const VM = struct {
     }
 
     fn negate(self: *VM) !void {
-        const val = self.peek();
+        const val = self.peek(0);
         switch (val.*) {
             .NUMBER => val.* = values.Value{ .NUMBER = -val.NUMBER },
             .BOOL => val.* = values.Value{ .BOOL = !val.BOOL },
@@ -160,6 +176,18 @@ pub const VM = struct {
     fn add(self: *VM) !void {
         const b = self.stack.pop();
         const a = self.stack.pop();
+
+        if (std.meta.activeTag(a) == values.ValueTypes.STRING) {
+            var arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+            defer arena.deinit();
+            const allocator = arena.allocator();
+
+            const new_string = values.Value{ .STRING = try std.mem.concat(self.allocator, u8, &.{ a.STRING, values.toString(allocator, b) }) };
+            try self.stack.append(new_string);
+            try self.objects.append(values.Obj{ .STRING = new_string });
+
+            return;
+        }
 
         std.debug.assert(@as(values.ValueTypes, a) == .NUMBER);
         std.debug.assert(@as(values.ValueTypes, b) == .NUMBER);
@@ -197,8 +225,8 @@ pub const VM = struct {
         try self.stack.append(values.Value{ .NUMBER = a.NUMBER / b.NUMBER });
     }
 
-    fn peek(self: *VM) *values.Value {
-        return &self.stack.items[self.stack.items.len - 1];
+    fn peek(self: *VM, distance: usize) *values.Value {
+        return &self.stack.items[self.stack.items.len - 1 - distance];
     }
 
     fn readByte(self: *VM) u8 {
