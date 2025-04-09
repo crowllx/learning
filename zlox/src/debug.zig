@@ -31,10 +31,17 @@ pub fn disassembleInstruction(idx: usize, instruction: u8, data: *chunk.Chunk) u
     const offset = switch (op) {
         .OP_CONSTANT => constInstruction("OP_CONSTANT", data, idx),
         .OP_CONSTANT_LONG => constLongInstruction("OP_CONSTANT_LONG", data, idx),
+        .OP_SET_LOCAL, .OP_GET_LOCAL => byteInstruction(@tagName(op), data, idx),
         else => simpleInstruction(@tagName(op)),
     };
 
     return offset;
+}
+
+fn byteInstruction(name: []const u8, data: *chunk.Chunk, offset: usize) usize {
+    const slot = data.code.items[offset + 1];
+    std.debug.print("{s:<16} {d:>4}", .{ name, slot });
+    return offset + 2;
 }
 
 fn constInstruction(name: []const u8, data: *chunk.Chunk, offset: usize) usize {

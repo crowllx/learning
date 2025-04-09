@@ -1,4 +1,5 @@
 const std = @import("std");
+const builtin = @import("builtin");
 const chunk = @import("chunk.zig");
 const values = @import("value.zig");
 const util = @import("util.zig");
@@ -13,6 +14,7 @@ pub const VM = struct {
     chunk: chunk.Chunk,
     ip: []u8,
     stack: std.ArrayList(values.Value),
+    globals: std.StringHashMap(values.Value),
     objects: std.ArrayList(values.Obj),
     allocator: std.mem.Allocator,
 
@@ -22,6 +24,7 @@ pub const VM = struct {
             .ip = undefined,
             .stack = std.ArrayList(values.Value).init(gpa),
             .objects = std.ArrayList(values.Obj).init(gpa),
+            .globals = std.StringHashMap(values.Value).init(gpa),
             .allocator = gpa,
         };
 
@@ -35,6 +38,8 @@ pub const VM = struct {
             if (std.meta.activeTag(constant) == .STRING) self.allocator.free(constant.STRING);
         }
         self.chunk.deinit();
+
+        self.globals.deinit();
         for (self.objects.items) |obj| {
             self.allocator.free(obj.STRING.STRING);
         }
@@ -52,6 +57,7 @@ pub const VM = struct {
 
         const result = self.run() catch |err| {
             std.debug.print("Error: {}\n", .{err});
+
             return .INTERPRET_RUNTIME_ERROR;
         };
 
@@ -92,11 +98,10 @@ pub const VM = struct {
                     const val = self.readConstantLong();
                     try self.stack.append(val);
                 },
-                .OP_RETURN => {
-                    std.debug.assert(self.stack.items.len > 0);
+                .OP_RETURN => {},
+                .OP_PRINT => {
                     try values.printValue(self.stack.pop());
                     try stdout.print("\n", .{});
-                    break;
                 },
                 .OP_NEGATE => self.negate(),
                 .OP_ADD => self.add(),
@@ -105,6 +110,40 @@ pub const VM = struct {
                 .OP_DIVIDE => self.divide(),
                 .OP_NOT => self.stack.append(values.Value{ .BOOL = isFalsey(self.stack.pop()) }),
                 .OP_FALSE => self.stack.append(values.Value{ .BOOL = false }),
+                .OP_POP => _ = self.stack.pop(),
+                .OP_GET_LOCAL => {
+                    const slot = self.readByte();
+                    try self.stack.append(self.stack.items[slot]);
+                },
+                .OP_SET_LOCAL => {
+                    const slot = self.readByte();
+                    self.stack.items[slot] = self.peek(0).*;
+                },
+                .OP_GET_GLOBAL => {
+                    const name = self.readString();
+
+                    if (self.globals.get(name.STRING)) |val| {
+                        try self.stack.append(val);
+                    } else {
+                        self.runtimeError("Undefined variable {s}.", .{name.STRING});
+                        return .INTERPRET_RUNTIME_ERROR;
+                    }
+                },
+                .OP_SET_GLOBAL => {
+                    const name = self.readString();
+                    const val = self.peek(0).*;
+                    if (self.globals.contains(name.STRING)) {
+                        try self.globals.put(name.STRING, val);
+                    } else {
+                        self.runtimeError("Undefined variable {s}.", .{name.STRING});
+                        return .INTERPRET_RUNTIME_ERROR;
+                    }
+                },
+                .OP_DEFINE_GLOBAL => {
+                    const name = self.readString();
+                    const val = self.stack.pop();
+                    try self.globals.put(name.STRING, val);
+                },
                 .OP_EQUAL => self.equal(),
                 .OP_GREATER => self.greater(),
                 .OP_LESS => self.less(),
@@ -116,26 +155,20 @@ pub const VM = struct {
         return .INTERPRET_OK;
     }
 
-    fn runtimeError(self: *VM, format: []const u8, args: anytype) void {
-        const ArgsType = @TypeOf(args);
-        const args_type_info = @typeInfo(ArgsType);
-
-        if (args_type_info != .@"struct") {
-            @compileError("expected tuple or struct argument found " ++ @typeName(ArgsType));
-        }
+    fn runtimeError(self: *VM, comptime format: []const u8, args: anytype) void {
+        // const ArgsType = @TypeOf(args);
+        // std.debug.assert(ArgsType == std.builtin.Type.Struct);
 
         std.debug.print(format, args);
-        std.debug.print("\n", .{});
 
         const line = self.chunk.getLine(self.offset());
-        std.debug.print("[line {d} in script\n]", line);
+        std.debug.print("[line {d} in script]\n", .{line});
+        std.debug.print("\n", .{});
     }
 
     fn equal(self: *VM) !void {
         const b = self.stack.pop();
         const a = self.stack.pop();
-
-        std.debug.print("{any}\n", .{std.meta.activeTag(b)});
 
         try switch (a) {
             .STRING => self.stack.append(values.Value{ .BOOL = std.mem.eql(u8, a.STRING, b.STRING) }),
@@ -226,7 +259,7 @@ pub const VM = struct {
     }
 
     fn peek(self: *VM, distance: usize) *values.Value {
-        return &self.stack.items[self.stack.items.len - 1 - distance];
+        return &self.stack.items[(self.stack.items.len - 1) - distance];
     }
 
     fn readByte(self: *VM) u8 {
@@ -252,6 +285,14 @@ pub const VM = struct {
         const idx = util.numFromBytes(buf);
         const val = self.getConstant(idx);
         return val;
+    }
+
+    fn readString(self: *VM) values.Value {
+        if (self.chunk.constants.items.len < std.math.maxInt(u8)) {
+            return self.readConstant();
+        } else {
+            return self.readConstantLong();
+        }
     }
 };
 

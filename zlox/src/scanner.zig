@@ -73,8 +73,8 @@ pub fn new(source: []const u8) Scanner {
     };
 }
 
-pub fn scanToken(self: *Scanner) ?Token {
-    if (self.isAtEnd()) return null;
+pub fn scanToken(self: *Scanner) Token {
+    if (self.isAtEnd()) return self.makeToken(.TOKEN_EOF);
 
     self.skipWhitespace();
     self.skipComment();
@@ -246,7 +246,7 @@ fn skipWhitespace(self: *Scanner) void {
     var is_space = std.ascii.isWhitespace(self.peek());
     if (!is_space) return;
 
-    while (is_space) : (is_space = std.ascii.isWhitespace(self.peek())) {
+    while (is_space and !self.isAtEnd()) : (is_space = std.ascii.isWhitespace(self.peek())) {
         const c = self.advance();
         if (c == '\n') self.line += 1;
     }

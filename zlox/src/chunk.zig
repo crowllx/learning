@@ -8,6 +8,12 @@ pub const opCode = enum(u8) {
     OP_NIL,
     OP_TRUE,
     OP_FALSE,
+    OP_POP,
+    OP_GET_LOCAL,
+    OP_GET_GLOBAL,
+    OP_DEFINE_GLOBAL,
+    OP_SET_LOCAL,
+    OP_SET_GLOBAL,
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,
@@ -18,6 +24,7 @@ pub const opCode = enum(u8) {
     OP_NOT,
     OP_NEGATE,
     OP_RETURN,
+    OP_PRINT,
 };
 
 const LineInfo = struct {
@@ -56,7 +63,14 @@ pub const Chunk = struct {
         }
     }
 
-    pub fn writeConstant(self: *Chunk, val: values.Value, line: u16) !void {
+    pub fn writeLong(self: *Chunk, idx: u24, line: u16) !void {
+        const bytes: [3]u8 = util.bytesFromNum(idx);
+        for (bytes) |elem| {
+            try self.writeChunk(elem, line);
+        }
+    }
+
+    pub fn writeConstant(self: *Chunk, val: values.Value, line: u16) !usize {
         try self.constants.append(val);
         const lastIndex = self.constants.items.len - 1;
         if (lastIndex <= 255) {
@@ -70,6 +84,8 @@ pub const Chunk = struct {
                 try self.writeChunk(element, line);
             }
         }
+
+        return lastIndex;
     }
 
     pub fn getLine(self: *Chunk, index: usize) u16 {

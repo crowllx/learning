@@ -1,1 +1,14 @@
-"hello " + "world " + nil
+var a = "hello";
+var b = " world";
+
+print a + b;
+
+{
+    var c = "test";
+    print c;
+    {
+        var d = "test2";
+        print d;
+    }
+    print d;
+}
