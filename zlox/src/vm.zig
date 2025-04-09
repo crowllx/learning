@@ -98,6 +98,11 @@ pub const VM = struct {
                     const val = self.readConstantLong();
                     try self.stack.append(val);
                 },
+                .OP_JUMP_IF_FALSE => {
+                    const count = self.readShort();
+                    if (isFalsey(self.peek(0).*)) self.ip = self.ip[count..];
+                },
+
                 .OP_RETURN => {},
                 .OP_PRINT => {
                     try values.printValue(self.stack.pop());
@@ -270,6 +275,13 @@ pub const VM = struct {
 
     fn offset(self: *VM) usize {
         return self.chunk.code.items.len - self.ip.len;
+    }
+
+    fn readShort(self: *VM) u16 {
+        const a: u16 = @as(u16, self.ip[0]) << 8;
+        const short_int = a | self.ip[1];
+        self.ip = self.ip[2..];
+        return short_int;
     }
 
     fn readConstant(self: *VM) values.Value {

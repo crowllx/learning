@@ -152,6 +152,13 @@ const Parser = struct {
         return true;
     }
 
+    fn emitJump(self: *Parser, instruction: u8) !usize {
+        try self.emitByte(instruction);
+        try self.emitByte(0xff);
+        try self.emitByte(0xff);
+        return self.chunk.code.items.len - 2;
+    }
+
     fn emitByte(self: *Parser, byte: u8) !void {
         try self.chunk.writeChunk(byte, self.previous.line);
     }
@@ -327,6 +334,28 @@ const Parser = struct {
         self.consume(.TOKEN_RIGHT_BRACE, "Expect '}' after block.");
     }
 
+    fn ifStatement(self: *Parser) void {
+        self.consume(.TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+        self.expression();
+        self.consume(.TOKEN_RIGHT_PAREN, "Expect ')' after 'if'.");
+
+        const then_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP_IF_FALSE)) catch unreachable;
+        self.statement();
+
+        self.patchJump(then_jump);
+    }
+
+    fn patchJump(self: *Parser, offset: usize) void {
+        const jump = self.chunk.code.items.len - offset - 2;
+
+        if (jump > std.math.maxInt(u16)) self.reportError("Too much code to jump over");
+
+        std.debug.assert(self.chunk.code.items[offset] == 0xff);
+        std.debug.assert(self.chunk.code.items[offset + 1] == 0xff);
+        self.chunk.code.items[offset] = @intCast((jump >> 8) & 0xff);
+        self.chunk.code.items[offset + 1] = @intCast(jump & 0xff);
+    }
+
     fn statement(self: *Parser) void {
         if (self.match(.TOKEN_PRINT)) {
             self.expression();
@@ -334,6 +363,8 @@ const Parser = struct {
             self.emitByte(@intFromEnum(chunk.opCode.OP_PRINT)) catch |err| {
                 std.debug.print("Error writing op: {}\n", .{err});
             };
+        } else if (self.match(.TOKEN_IF)) {
+            self.ifStatement();
         } else if (self.match(.TOKEN_LEFT_BRACE)) {
             beginScope();
             self.block() catch unreachable;
@@ -480,7 +511,7 @@ const Parser = struct {
             self.eval(infix_rule, can_assign);
         }
     }
-    
+
     fn resolveLocal(self: *Parser, compiler: *Compiler, name: Scanner.Token) isize {
         if (compiler.local_count == 0) return -1;
         var start: isize = compiler.local_count - 1;
