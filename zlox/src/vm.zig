@@ -98,9 +98,13 @@ pub const VM = struct {
                     const val = self.readConstantLong();
                     try self.stack.append(val);
                 },
+                .OP_JUMP => {
+                    const jump_offset = self.readShort();
+                    self.ip = self.ip[jump_offset..];
+                },
                 .OP_JUMP_IF_FALSE => {
-                    const count = self.readShort();
-                    if (isFalsey(self.peek(0).*)) self.ip = self.ip[count..];
+                    const jump_offset = self.readShort();
+                    if (isFalsey(self.peek(0).*)) self.ip = self.ip[jump_offset..];
                 },
 
                 .OP_RETURN => {},

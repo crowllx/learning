@@ -223,6 +223,7 @@ const Parser = struct {
         if (util.config.debug) {
             if (!self.had_error) {
                 debug.disassembleChunk(self.chunk, "code");
+                std.debug.print("\n", .{});
             }
         }
     }
@@ -340,9 +341,15 @@ const Parser = struct {
         self.consume(.TOKEN_RIGHT_PAREN, "Expect ')' after 'if'.");
 
         const then_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP_IF_FALSE)) catch unreachable;
+        self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
         self.statement();
 
+        const else_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP)) catch unreachable;
         self.patchJump(then_jump);
+        self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+
+        if (self.match(.TOKEN_ELSE)) self.statement();
+        self.patchJump(else_jump);
     }
 
     fn patchJump(self: *Parser, offset: usize) void {
