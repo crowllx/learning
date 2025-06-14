@@ -1,1 +1,24 @@
-if (false) print 1;
+if (false) {
+    print 1;
+} else {
+    print 2;
+}
+
+var i = 0;
+
+while (i < 5) {
+    print i;
+    i = i + 1;
+}
+
+print "";
+
+for (i; i < 10; i = i + 1) {
+    print i;
+}
+
+print "";
+
+for (var j = 0; j < 5; j = j + 1) {
+    print "j " + j;
+}

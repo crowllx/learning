@@ -29,6 +29,8 @@ const ExpressionType = enum {
     LITERAL,
     STRING,
     VARIABLE,
+    AND,
+    OR,
 };
 
 const RULES = [_]ParseRule{
@@ -54,7 +56,7 @@ const RULES = [_]ParseRule{
     .{ .prefix = .VARIABLE, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_IDENTIFIER
     .{ .prefix = .STRING, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_STRING
     .{ .prefix = .NUMBER, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_NUMBER
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_AND
+    .{ .prefix = undefined, .infix = .AND, .precedence = .PREC_AND }, // .TOKEN_AND
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_CLASS
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_ELSE
     .{ .prefix = .LITERAL, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_FALSE
@@ -62,7 +64,7 @@ const RULES = [_]ParseRule{
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_FUN
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_IF
     .{ .prefix = .LITERAL, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_NIL
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_OR
+    .{ .prefix = undefined, .infix = .OR, .precedence = .PREC_OR }, // .TOKEN_OR
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_PRINT
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_RETURN
     .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_SUPER
@@ -152,6 +154,33 @@ const Parser = struct {
         return true;
     }
 
+    fn and_(self: *Parser, _: bool) void {
+        const end_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP_IF_FALSE)) catch unreachable;
+        self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch logError("error writing byte", self.scanner.line);
+        self.parsePrecedence(.PREC_AND);
+        self.patchJump(end_jump);
+    }
+
+    fn or_(self: *Parser, _: bool) void {
+        const else_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP_IF_FALSE)) catch unreachable;
+        const end_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP)) catch unreachable;
+
+        self.patchJump(else_jump);
+        self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch logError("error writing byte", self.scanner.line);
+
+        self.parsePrecedence(.PREC_OR);
+        self.patchJump(end_jump);
+    }
+
+    fn emitLoop(self: *Parser, loop_start: usize) void {
+        self.emitByte(@intFromEnum(chunk.opCode.OP_LOOP)) catch unreachable;
+
+        const offset = self.chunk.code.items.len - 1 - loop_start + 2;
+        if (offset > std.math.maxInt(u16)) self.reportError("Loop Body too large.");
+
+        self.emitByte(@intCast((offset >> 8) & 0xff)) catch unreachable;
+        self.emitByte(@intCast(offset & 0xff)) catch unreachable;
+    }
     fn emitJump(self: *Parser, instruction: u8) !usize {
         try self.emitByte(instruction);
         try self.emitByte(0xff);
@@ -223,6 +252,7 @@ const Parser = struct {
         if (util.config.debug) {
             if (!self.had_error) {
                 debug.disassembleChunk(self.chunk, "code");
+                std.debug.print("\n", .{});
             }
         }
     }
@@ -334,15 +364,92 @@ const Parser = struct {
         self.consume(.TOKEN_RIGHT_BRACE, "Expect '}' after block.");
     }
 
+    fn forStatement(self: *Parser) void {
+        beginScope();
+        self.consume(.TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+
+        // initializer
+        switch (self.current.type) {
+            .TOKEN_SEMICOLON => self.advance(),
+            .TOKEN_VAR => {
+                self.advance();
+                self.varDeclaration() catch unreachable;
+            },
+            else => {
+                self.expression();
+                self.consume(.TOKEN_SEMICOLON, "Expect ';' after expression.");
+                self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+            },
+        }
+
+        var loop_start: usize = self.chunk.code.items.len - 1;
+        var exit_jump: isize = -1;
+
+        if (!self.match(.TOKEN_SEMICOLON)) {
+            self.expression();
+            self.consume(.TOKEN_SEMICOLON, "Expect ';' after loop condition.");
+
+            // jump out of the loop if condition is false
+            const jmp = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP_IF_FALSE)) catch unreachable;
+            exit_jump = @intCast(jmp);
+            self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+        }
+
+        if (!self.match(.TOKEN_RIGHT_PAREN)) {
+            const body_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP)) catch unreachable;
+            const increment_start = self.chunk.code.items.len - 1;
+            self.expression();
+            self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+            std.debug.print("{any}\n", .{self.current.type});
+            self.consume(.TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
+
+            self.emitLoop(loop_start);
+            loop_start = increment_start;
+            self.patchJump(body_jump);
+        }
+
+        self.statement();
+        self.emitLoop(loop_start);
+
+        if (exit_jump != -1) {
+            self.patchJump(@intCast(exit_jump));
+            self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+        }
+
+        endScope(self);
+    }
+
     fn ifStatement(self: *Parser) void {
         self.consume(.TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
         self.expression();
         self.consume(.TOKEN_RIGHT_PAREN, "Expect ')' after 'if'.");
 
         const then_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP_IF_FALSE)) catch unreachable;
+        self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
         self.statement();
 
+        const else_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP)) catch unreachable;
         self.patchJump(then_jump);
+        self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+
+        if (self.match(.TOKEN_ELSE)) self.statement();
+        self.patchJump(else_jump);
+    }
+
+    fn whileStatement(self: *Parser) void {
+        const loop_start = self.chunk.code.items.len - 1;
+
+        self.consume(.TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
+        self.expression();
+        self.consume(.TOKEN_RIGHT_PAREN, "Expect ')' after 'if'.");
+
+        const exit_jump = self.emitJump(@intFromEnum(chunk.opCode.OP_JUMP_IF_FALSE)) catch unreachable;
+        self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+        self.statement();
+        self.emitLoop(loop_start);
+
+        self.patchJump(exit_jump);
+        self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
     }
 
     fn patchJump(self: *Parser, offset: usize) void {
@@ -363,8 +470,12 @@ const Parser = struct {
             self.emitByte(@intFromEnum(chunk.opCode.OP_PRINT)) catch |err| {
                 std.debug.print("Error writing op: {}\n", .{err});
             };
+        } else if (self.match(.TOKEN_FOR)) {
+            self.forStatement();
         } else if (self.match(.TOKEN_IF)) {
             self.ifStatement();
+        } else if (self.match(.TOKEN_WHILE)) {
+            self.whileStatement();
         } else if (self.match(.TOKEN_LEFT_BRACE)) {
             beginScope();
             self.block() catch unreachable;
@@ -372,7 +483,7 @@ const Parser = struct {
         } else {
             self.expression();
             self.consume(.TOKEN_SEMICOLON, "Expect ; after a statement.");
-            // self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+            self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
         }
     }
 
@@ -491,6 +602,8 @@ const Parser = struct {
             .LITERAL => self.literal(),
             .STRING => self.string(),
             .VARIABLE => self.variable(can_assign),
+            .AND => self.and_(can_assign),
+            .OR => self.or_(can_assign),
         }
     }
 
@@ -549,6 +662,10 @@ fn endScope(parser: *Parser) void {
         parser.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
         current.local_count -= 1;
     }
+}
+
+fn logError(msg: []const u8, line: usize) void {
+    std.log.err("{s} line {d}\n", .{ msg, line });
 }
 
 pub fn compile(gpa: std.mem.Allocator, src: []const u8, dst: *chunk.Chunk) bool {

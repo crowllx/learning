@@ -19,3 +19,9 @@ vector<vector<string>> nestedVectors;
 
 how could a language implement contextual keywords?
 ie: `await` in javascript
+
+
+### 6/14
+
+challenges to do 
+implement switch and continue

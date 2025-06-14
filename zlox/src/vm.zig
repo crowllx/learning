@@ -50,7 +50,6 @@ pub const VM = struct {
         self.stack.clearRetainingCapacity();
 
         if (!compiler.compile(alloc, source, &self.chunk)) {
-            self.chunk.deinit();
             return .INTERPRET_COMPILE_ERROR;
         }
         self.ip = self.chunk.code.items;
@@ -98,11 +97,18 @@ pub const VM = struct {
                     const val = self.readConstantLong();
                     try self.stack.append(val);
                 },
-                .OP_JUMP_IF_FALSE => {
-                    const count = self.readShort();
-                    if (isFalsey(self.peek(0).*)) self.ip = self.ip[count..];
+                .OP_JUMP => {
+                    const jump_offset = self.readShort();
+                    self.ip = self.ip[jump_offset..];
                 },
-
+                .OP_JUMP_IF_FALSE => {
+                    const jump_offset = self.readShort();
+                    if (isFalsey(self.peek(0).*)) self.ip = self.ip[jump_offset..];
+                },
+                .OP_LOOP => {
+                    const loop_offset = self.readShort();
+                    self.ip = self.chunk.code.items[self.offset() - loop_offset ..];
+                },
                 .OP_RETURN => {},
                 .OP_PRINT => {
                     try values.printValue(self.stack.pop());
