@@ -14,6 +14,9 @@ pub const opCode = enum(u8) {
     OP_DEFINE_GLOBAL,
     OP_SET_LOCAL,
     OP_SET_GLOBAL,
+    OP_GET_UPVALUE,
+    OP_SET_UPVALUE,
+    OP_CLOSE_UPVALUE,
     OP_EQUAL,
     OP_GREATER,
     OP_LESS,
@@ -28,6 +31,8 @@ pub const opCode = enum(u8) {
     OP_JUMP,
     OP_JUMP_IF_FALSE,
     OP_LOOP,
+    OP_CLOSURE,
+    OP_CALL,
 };
 
 const LineInfo = struct {
@@ -39,18 +44,25 @@ pub const Chunk = struct {
     code: std.ArrayList(u8),
     constants: values.ValueArray,
     lines: std.ArrayList(LineInfo),
+    allocator: std.mem.Allocator,
 
     pub fn init(allocator: std.mem.Allocator) !Chunk {
         var c = Chunk{
             .code = std.ArrayList(u8).init(allocator),
             .constants = values.ValueArray.init(allocator),
             .lines = std.ArrayList(LineInfo).init(allocator),
+            .allocator = allocator,
         };
         try c.lines.append(LineInfo{ .line = 1, .instructionCount = 0 });
         return c;
     }
 
     pub fn deinit(self: *Chunk) void {
+        for (self.constants.items) |constant| {
+            if (std.meta.activeTag(constant) == .OBJ and std.meta.activeTag(constant.OBJ) == .STRING) {
+                self.allocator.free(constant.OBJ.STRING);
+            }
+        }
         self.code.deinit();
         self.constants.deinit();
         self.lines.deinit();

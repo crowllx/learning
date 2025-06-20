@@ -7,25 +7,55 @@ pub const ValueTypes = enum {
     BOOL,
     NUMBER,
     NIL,
-    STRING,
+    OBJ,
 };
 
 pub const Value = union(ValueTypes) {
     BOOL: bool,
     NUMBER: f64,
     NIL: void,
-    STRING: []u8,
+    OBJ: Obj,
 };
 
 pub const ObjTypes = enum {
     STRING,
     FUNCTION,
+    NATIVE_FUNCTION,
+    CLOSURE,
 };
 
 pub const Obj = union(ObjTypes) {
-    STRING: Value,
+    STRING: []u8,
     FUNCTION: Function,
+    NATIVE_FUNCTION: NativeFn,
+    CLOSURE: Closure,
 };
+
+pub const Closure = struct {
+    function: Function,
+    upvalues: std.ArrayList(*Upvalue),
+    upvalue_count: usize,
+};
+
+pub fn newClosure(allocator: std.mem.Allocator, function: Function) !Closure {
+    return Closure{
+        .function = function,
+        .upvalues = try std.ArrayList(*Upvalue).initCapacity(allocator, function.upvalue_count),
+        .upvalue_count = function.upvalue_count,
+    };
+}
+
+pub const Upvalue = struct {
+    location: *Value,
+    next: ?*Upvalue,
+    closed: Value,
+};
+
+pub fn newUpvalue(slot: *Value) Upvalue {
+    return Upvalue{ .location = slot, .next = null, .closed = undefined };
+}
+
+pub const NativeFn = *const anyopaque;
 
 pub const FunctionType = enum {
     TYPE_FUNCTION,
@@ -34,14 +64,16 @@ pub const FunctionType = enum {
 
 pub const Function = struct {
     arity: u8,
-    byte_code: *chunk.Chunk,
+    byte_code: chunk.Chunk,
     name: []const u8,
+    upvalue_count: usize,
 
-    pub fn new(allocator: std.mem.Allocator) Function {
+    pub fn new(allocator: std.mem.Allocator) !Function {
         return Function{
             .arity = 0,
-            .byte_code = &chunk.Chunk.init(allocator),
+            .byte_code = try chunk.Chunk.init(allocator),
             .name = undefined,
+            .upvalue_count = 0,
         };
     }
 
@@ -58,12 +90,27 @@ pub const Function = struct {
     }
 };
 
+pub fn newString(str: []u8) Value {
+    return Value{ .OBJ = Obj{ .STRING = str } };
+}
+
 pub fn printObject(object: Obj) void {
     const stdout = std.io.getStdOut().writer();
     switch (object) {
-        .STRING => printValue(object.STRING),
+        .STRING => stdout.print("{s}", .{object.STRING}) catch unreachable,
         .FUNCTION => stdout.print("<fn {s}>", .{object.FUNCTION.name}) catch unreachable,
+        .NATIVE_FUNCTION => stdout.print("<native fn>", .{}) catch unreachable,
+        .CLOSURE => stdout.print("<fn {s}>", .{object.CLOSURE.function.name}) catch unreachable,
     }
+}
+
+pub fn objToString(obj: Obj) []const u8 {
+    return switch (obj) {
+        .FUNCTION => "",
+        .STRING => obj.STRING,
+        .NATIVE_FUNCTION => "",
+        .CLOSURE => "",
+    };
 }
 
 pub fn toString(allocator: std.mem.Allocator, val: Value) []const u8 {
@@ -71,7 +118,7 @@ pub fn toString(allocator: std.mem.Allocator, val: Value) []const u8 {
         .NUMBER => std.fmt.allocPrint(allocator, "{d:.2}", .{val.NUMBER}) catch "",
         .BOOL => std.fmt.allocPrint(allocator, "{}", .{val.BOOL}) catch "",
         .NIL => "nil",
-        .STRING => val.STRING,
+        .OBJ => std.fmt.allocPrint(allocator, "{s}", .{objToString(val.OBJ)}) catch "",
     };
 }
 pub fn printValue(val: Value) !void {
@@ -80,7 +127,7 @@ pub fn printValue(val: Value) !void {
         .NUMBER => stdout.print("{d:.2}", .{val.NUMBER}),
         .BOOL => stdout.print("{}", .{val.BOOL}),
         .NIL => stdout.print("nil", .{}),
-        .STRING => stdout.print("{s}", .{val.STRING}),
+        .OBJ => printObject(val.OBJ),
         // else => {},
     };
 }

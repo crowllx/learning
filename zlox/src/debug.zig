@@ -32,9 +32,29 @@ pub fn disassembleInstruction(idx: usize, instruction: u8, data: *chunk.Chunk) u
         .OP_CONSTANT => constInstruction("OP_CONSTANT", data, idx),
         .OP_CONSTANT_LONG => constLongInstruction("OP_CONSTANT_LONG", data, idx),
         .OP_SET_LOCAL, .OP_GET_LOCAL => byteInstruction(@tagName(op), data, idx),
+        .OP_SET_GLOBAL, .OP_GET_GLOBAL => byteInstruction(@tagName(op), data, idx),
+        .OP_DEFINE_GLOBAL => byteInstruction(@tagName(op), data, idx),
         .OP_JUMP => jumpInstruction("OP_JUMP", 1, data, idx),
         .OP_JUMP_IF_FALSE => jumpInstruction("OP_JUMP_IF_FALSE", 1, data, idx),
         .OP_LOOP => jumpInstruction("OP_LOOP", -1, data, idx),
+        .OP_CALL => byteInstruction("OP_CALL", data, idx),
+        .OP_CLOSURE => {
+            const offset = idx + 1;
+            const constant = data.code.items[offset];
+            std.debug.print("{s:<16} {d:>4} ", .{ "OP_CLOSURE", constant });
+            values.printValue(data.constants.items[constant]) catch unreachable;
+            std.debug.print("\n", .{});
+            const function = data.constants.items[constant].OBJ.FUNCTION;
+
+            for (0..function.upvalue_count) |i| {
+                const is_local = data.code.items[offset + i + 1];
+                const index = data.code.items[offset + i + 2];
+
+                std.debug.print("{d:>4}     |                  {s} {d}n", .{ offset + i, if (is_local == 0) "local" else "upvalue", index });
+            }
+
+            return 2 + function.upvalue_count * 2;
+        },
         else => simpleInstruction(@tagName(op)),
     };
 
@@ -52,8 +72,8 @@ fn jumpInstruction(name: []const u8, sign: i8, data: *chunk.Chunk, offset: usize
 
 fn byteInstruction(name: []const u8, data: *chunk.Chunk, offset: usize) usize {
     const slot = data.code.items[offset + 1];
-    std.debug.print("{s:<16} {d:>8}", .{ name, slot });
-    return offset + 2;
+    std.debug.print("{s:<16} {d:>8}\n", .{ name, slot });
+    return 2;
 }
 
 fn constInstruction(name: []const u8, data: *chunk.Chunk, offset: usize) usize {

@@ -16,7 +16,7 @@ const Precedence = enum {
     PREC_FACTOR, // * /
     PREC_UNARY, // ! -
     PREC_CALL, // . ()
-    PREC_PRIMAR,
+    PREC_PRIMARY,
 };
 
 const ExpressionType = enum {
@@ -29,49 +29,58 @@ const ExpressionType = enum {
     VARIABLE,
     AND,
     OR,
+    CALL,
+    NULL,
 };
 
 const RULES = [_]ParseRule{
-    .{ .prefix = .GROUPING, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_LEFT_PAREN
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_RIGHT_PAREN]
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_LEFT_BRACE]
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_RIGHT_BRACE
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_COMMA
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_DOT
+    .{ .prefix = .GROUPING, .infix = .CALL, .precedence = .PREC_CALL }, // .TOKEN_LEFT_PAREN
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_RIGHT_PAREN]
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_LEFT_BRACE]
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_RIGHT_BRACE
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_COMMA
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_DOT
     .{ .prefix = .UNARY, .infix = .BINARY, .precedence = .PREC_TERM }, // .TOKEN_MINUS
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_TERM }, // .TOKEN_PLUS
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_SEMICOLON
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_FACTOR }, // .TOKEN_SLASH
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_FACTOR }, // .TOKEN_STAR
-    .{ .prefix = .UNARY, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_BANG
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_EQUALITY }, // .TOKEN_BANG_EQUAL
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_EQUAL
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_EQUALITY }, // .TOKEN_EQUAL_EQUAL
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_GREATER
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_GREATER_EQUAL
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_LESS
-    .{ .prefix = undefined, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_LESS_EQUAL
-    .{ .prefix = .VARIABLE, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_IDENTIFIER
-    .{ .prefix = .STRING, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_STRING
-    .{ .prefix = .NUMBER, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_NUMBER
-    .{ .prefix = undefined, .infix = .AND, .precedence = .PREC_AND }, // .TOKEN_AND
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_CLASS
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_ELSE
-    .{ .prefix = .LITERAL, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_FALSE
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_FOR
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_FUN
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_IF
-    .{ .prefix = .LITERAL, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_NIL
-    .{ .prefix = undefined, .infix = .OR, .precedence = .PREC_OR }, // .TOKEN_OR
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_PRINT
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_RETURN
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_SUPER
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_THIS
-    .{ .prefix = .LITERAL, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_TRUE
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_VAR
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_WHILE
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_ERROR
-    .{ .prefix = undefined, .infix = undefined, .precedence = .PREC_NONE }, // .TOKEN_EOF
+    .{ .prefix = .NULL, .infix = .BINARY, .precedence = .PREC_TERM }, // .TOKEN_PLUS
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_SEMICOLON
+    .{ .prefix = .NULL, .infix = .BINARY, .precedence = .PREC_FACTOR }, // .TOKEN_SLASH
+    .{ .prefix = .NULL, .infix = .BINARY, .precedence = .PREC_FACTOR }, // .TOKEN_STAR
+    .{ .prefix = .UNARY, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_BANG
+    .{ .prefix = .NULL, .infix = .BINARY, .precedence = .PREC_EQUALITY }, // .TOKEN_BANG_EQUAL
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_EQUAL
+    .{ .prefix = .NULL, .infix = .BINARY, .precedence = .PREC_EQUALITY }, // .TOKEN_EQUAL_EQUAL
+    .{ .prefix = .NULL, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_GREATER
+    .{ .prefix = .NULL, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_GREATER_EQUAL
+    .{ .prefix = .NULL, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_LESS
+    .{ .prefix = .NULL, .infix = .BINARY, .precedence = .PREC_COMPARISON }, // .TOKEN_LESS_EQUAL
+    .{ .prefix = .VARIABLE, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_IDENTIFIER
+    .{ .prefix = .STRING, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_STRING
+    .{ .prefix = .NUMBER, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_NUMBER
+    .{ .prefix = .NULL, .infix = .AND, .precedence = .PREC_AND }, // .TOKEN_AND
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_CLASS
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_ELSE
+    .{ .prefix = .LITERAL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_FALSE
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_FOR
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_FUN
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_IF
+    .{ .prefix = .LITERAL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_NIL
+    .{ .prefix = .NULL, .infix = .OR, .precedence = .PREC_OR }, // .TOKEN_OR
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_PRINT
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_RETURN
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_SUPER
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_THIS
+    .{ .prefix = .LITERAL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_TRUE
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_VAR
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_WHILE
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_ERROR
+    .{ .prefix = .NULL, .infix = .NULL, .precedence = .PREC_NONE }, // .TOKEN_EOF
+};
+
+var current: *Compiler = undefined;
+
+const Upvalue = struct {
+    index: u8,
+    is_local: bool,
 };
 
 const ParseRule = struct {
@@ -87,24 +96,48 @@ fn getRule(t_type: Scanner.TokenType) ParseRule {
 const UINT8_COUNT = std.math.maxInt(u8);
 
 const Compiler = struct {
-    parser: Parser,
+    parser: *Parser,
+    enclosing: ?*Compiler,
     function: values.Function,
     function_type: values.FunctionType,
     locals: [UINT8_COUNT]Local,
     local_count: u8,
     scope_depth: u8,
+    upvalues: [UINT8_COUNT]Upvalue,
     allocator: std.mem.Allocator,
 
-    fn init(alloctor: std.mem.Allocator, src: []const u8, dst: *chunk.Chunk) Compiler {
-        return Compiler{
-            .parser = Parser.new(src),
-            .function = values.Function.newFrom(dst),
-            .function_type = values.FunctionType.TYPE_SCRIPT,
+    fn init(allocator: std.mem.Allocator, parser: *Parser, function_type: values.FunctionType) !Compiler {
+        var compiler = Compiler{
+            .enclosing = current,
+            .parser = parser,
+            .function = try values.Function.new(allocator),
+            .function_type = function_type,
             .locals = undefined,
             .local_count = 0,
             .scope_depth = 0,
-            .allocator = alloctor,
+            .upvalues = undefined,
+            .allocator = allocator,
         };
+
+        const slot_zero = Scanner.Token{
+            .data = undefined,
+            .length = 0,
+            .type = Scanner.TokenType.TOKEN_NIL,
+            .line = 0,
+        };
+
+        compiler.locals[0] = Local{
+            .name = slot_zero,
+            .depth = 0,
+            .is_captured = false,
+        };
+        compiler.local_count += 1;
+
+        if (function_type != .TYPE_SCRIPT) {
+            compiler.function.name = allocator.dupe(u8, parser.previous.data[0..parser.previous.length]) catch unreachable;
+        }
+
+        return compiler;
     }
 
     fn and_(self: *Compiler, _: bool) void {
@@ -158,14 +191,25 @@ const Compiler = struct {
             try self.function.byte_code.writeLong(@intCast(b), self.parser.previous.line);
         }
     }
-    fn endCompiler(self: *Compiler) !void {
-        try self.emitByte(@intFromEnum(chunk.opCode.OP_RETURN));
+
+    fn emitReturn(self: *Compiler) void {
+        self.emitByte(@intFromEnum(chunk.opCode.OP_NIL)) catch unreachable;
+        self.emitByte(@intFromEnum(chunk.opCode.OP_RETURN)) catch unreachable;
+    }
+
+    fn endCompiler(self: *Compiler) !values.Function {
+        self.emitReturn();
+
         if (util.config.debug) {
             if (!self.parser.had_error) {
-                debug.disassembleChunk(self.function.byte_code, "code");
+                debug.disassembleChunk(&self.function.byte_code, "code");
                 std.debug.print("\n", .{});
             }
         }
+
+        // if (current)
+        // current = current.enclosing.?;
+        return self.function;
     }
 
     fn emitConstant(self: *Compiler, val: values.Value) !usize {
@@ -185,7 +229,9 @@ const Compiler = struct {
     // statements
 
     fn declaration(self: *Compiler) void {
-        if (self.parser.match(.TOKEN_VAR)) {
+        if (self.parser.match(.TOKEN_FUN)) {
+            self.funDeclaration();
+        } else if (self.parser.match(.TOKEN_VAR)) {
             self.varDeclaration() catch {
                 self.parser.reportError("error declaring variable.");
             };
@@ -204,6 +250,7 @@ const Compiler = struct {
         const local = Local{
             .name = name,
             .depth = -1,
+            .is_captured = false,
         };
 
         self.locals[self.local_count] = local;
@@ -221,7 +268,8 @@ const Compiler = struct {
 
     fn identiferConstant(self: *Compiler, name: *Scanner.Token) u24 {
         const str = self.allocator.dupe(u8, name.data[0..name.length]) catch unreachable;
-        return @intCast(self.makeConstant(values.Value{ .STRING = str }));
+        const obj = values.Obj{ .STRING = str };
+        return @intCast(self.makeConstant(values.Value{ .OBJ = obj }));
     }
 
     fn makeConstant(self: *Compiler, value: values.Value) usize {
@@ -255,6 +303,74 @@ const Compiler = struct {
         self.emitBytesLong(@intFromEnum(chunk.opCode.OP_DEFINE_GLOBAL), global) catch unreachable;
     }
 
+    fn argumentList(self: *Compiler) u8 {
+        var count: u8 = 0;
+        if (self.parser.current.type != .TOKEN_RIGHT_PAREN) {
+            while (true) {
+                self.expression();
+                if (count == 255) self.parser.reportError("Can't have more than 255 arguments.");
+                count += 1;
+
+                if (!self.parser.match(.TOKEN_COMMA)) break;
+            }
+        }
+        self.parser.consume(.TOKEN_RIGHT_PAREN, "Expect ')' after arguments.");
+        return count;
+    }
+
+    fn call(self: *Compiler, _: bool) void {
+        const arg_count = self.argumentList();
+        self.emitBytes(@intFromEnum(chunk.opCode.OP_CALL), arg_count) catch unreachable;
+    }
+
+    fn func(self: *Compiler, function_type: values.FunctionType) void {
+        var compiler = Compiler.init(self.allocator, self.parser, function_type) catch {
+            std.debug.print("Failed to initialize compiler.", .{});
+            return;
+        };
+
+        beginScope(&compiler);
+        compiler.parser.consume(.TOKEN_LEFT_PAREN, "Expect '(' after function name.");
+
+        if (compiler.parser.current.type != .TOKEN_RIGHT_PAREN) {
+            while (true) {
+                compiler.function.arity += 1;
+                if (compiler.function.arity > 255) {
+                    compiler.parser.errorAt(compiler.parser.current, "Can't have more than 255 parameters.");
+                }
+
+                const constant = compiler.parseVariable("Expect Parameter name.") orelse 0;
+                compiler.defineVariable(constant);
+
+                if (!compiler.parser.match(.TOKEN_COMMA)) break;
+            }
+        }
+        compiler.parser.consume(.TOKEN_RIGHT_PAREN, "Expect ')' after parameters.");
+        compiler.parser.consume(.TOKEN_LEFT_BRACE, "Expect '{' before function body.");
+        compiler.block() catch {
+            std.debug.print("block err during function.\n", .{});
+        };
+
+        const func_obj = compiler.endCompiler() catch {
+            std.debug.print("Error compiling function.\n", .{});
+        };
+        current = &compiler;
+        const idx = self.makeConstant(values.Value{ .OBJ = values.Obj{ .FUNCTION = func_obj } });
+        self.emitBytes(@intFromEnum(chunk.opCode.OP_CLOSURE), @intCast(idx)) catch unreachable;
+
+        for (0..self.function.upvalue_count) |i| {
+            self.emitByte(if (self.upvalues[i].is_local) 1 else 0) catch unreachable;
+            self.emitByte(self.upvalues[i].index) catch unreachable;
+        }
+    }
+
+    fn funDeclaration(self: *Compiler) void {
+        const global = self.parseVariable("Expect Function name") orelse 0;
+        markInitialized(self);
+        self.func(.TYPE_FUNCTION);
+        self.defineVariable(global);
+    }
+
     fn varDeclaration(self: *Compiler) !void {
         const global = self.parseVariable("Expect Variable name") orelse 0;
 
@@ -280,17 +396,20 @@ const Compiler = struct {
         self.parser.consume(.TOKEN_LEFT_PAREN, "Expect '(' after 'if'.");
 
         // initializer
+        if (self.parser.match(.TOKEN_SEMICOLON)) {} else if (self.parser.match(.TOKEN_VAR)) {
+            self.varDeclaration() catch unreachable;
+        } else {
+            self.expression();
+            self.parser.consume(.TOKEN_SEMICOLON, "Expect ';' after expression.");
+            self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+        }
         switch (self.parser.current.type) {
             .TOKEN_SEMICOLON => self.parser.advance(),
             .TOKEN_VAR => {
                 self.parser.advance();
                 self.varDeclaration() catch unreachable;
             },
-            else => {
-                self.expression();
-                self.parser.consume(.TOKEN_SEMICOLON, "Expect ';' after expression.");
-                self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
-            },
+            else => {},
         }
 
         var loop_start: usize = self.function.byte_code.code.items.len - 1;
@@ -311,7 +430,6 @@ const Compiler = struct {
             const increment_start = self.function.byte_code.code.items.len - 1;
             self.expression();
             self.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
-            std.debug.print("{any}\n", .{self.parser.current.type});
             self.parser.consume(.TOKEN_RIGHT_PAREN, "Expect ')' after for clauses.");
 
             self.emitLoop(loop_start);
@@ -374,6 +492,20 @@ const Compiler = struct {
         self.function.byte_code.code.items[offset + 1] = @intCast(jump & 0xff);
     }
 
+    fn returnStatement(self: *Compiler) void {
+        if (self.function_type == .TYPE_SCRIPT) {
+            self.parser.reportError("Can't return from top-level code.");
+        }
+
+        if (self.parser.match(.TOKEN_SEMICOLON)) {
+            self.emitReturn();
+        } else {
+            self.expression();
+            self.parser.consume(.TOKEN_SEMICOLON, "Expect ';' after return value.");
+            self.emitByte(@intFromEnum(chunk.opCode.OP_RETURN)) catch unreachable;
+        }
+    }
+
     fn statement(self: *Compiler) void {
         if (self.parser.match(.TOKEN_PRINT)) {
             self.expression();
@@ -385,6 +517,8 @@ const Compiler = struct {
             self.forStatement();
         } else if (self.parser.match(.TOKEN_IF)) {
             self.ifStatement();
+        } else if (self.parser.match(.TOKEN_RETURN)) {
+            self.returnStatement();
         } else if (self.parser.match(.TOKEN_WHILE)) {
             self.whileStatement();
         } else if (self.parser.match(.TOKEN_LEFT_BRACE)) {
@@ -470,7 +604,9 @@ const Compiler = struct {
             return;
         };
 
-        _ = self.emitConstant(values.Value{ .STRING = str }) catch |err| {
+        const obj = values.Obj{ .STRING = str };
+
+        _ = self.emitConstant(values.Value{ .OBJ = obj }) catch |err| {
             std.debug.print("Error writing string: {}\n", .{err});
             return;
         };
@@ -483,11 +619,17 @@ const Compiler = struct {
     fn namedVariable(self: *Compiler, name: Scanner.Token, can_assign: bool) void {
         var get_op: u8 = 0;
         var set_op: u8 = 0;
-        var arg = self.resolveLocal(self, name);
+        var arg = self.resolveLocal(name);
+        const up_arg = self.resolveUpvalue(name);
+        std.debug.print("arg: {d} up_arg: {d}\n", .{arg, up_arg});
 
         if (arg != -1) {
             get_op = @intFromEnum(chunk.opCode.OP_GET_LOCAL);
             set_op = @intFromEnum(chunk.opCode.OP_SET_LOCAL);
+        } else if (up_arg != -1) {
+            get_op = @intFromEnum(chunk.opCode.OP_GET_UPVALUE);
+            set_op = @intFromEnum(chunk.opCode.OP_SET_UPVALUE);
+            arg = up_arg;
         } else {
             get_op = @intFromEnum(chunk.opCode.OP_GET_GLOBAL);
             set_op = @intFromEnum(chunk.opCode.OP_SET_GLOBAL);
@@ -497,7 +639,6 @@ const Compiler = struct {
 
         if (can_assign and self.parser.match(.TOKEN_EQUAL)) {
             self.expression();
-
             self.emitBytes(set_op, @intCast(arg)) catch unreachable;
         } else {
             self.emitBytes(get_op, @intCast(arg)) catch unreachable;
@@ -515,6 +656,8 @@ const Compiler = struct {
             .VARIABLE => self.variable(can_assign),
             .AND => self.and_(can_assign),
             .OR => self.or_(can_assign),
+            .CALL => self.call(can_assign),
+            .NULL => self.parser.reportError("Invalid expression."),
         }
     }
 
@@ -522,7 +665,7 @@ const Compiler = struct {
         self.parser.advance();
         const rule = getRule(self.parser.previous.type);
 
-        if (rule.prefix == undefined) {
+        if (rule.prefix == .NULL) {
             self.parser.reportError("Expect expression.");
             return;
         }
@@ -536,12 +679,49 @@ const Compiler = struct {
         }
     }
 
-    fn resolveLocal(self: *Compiler, compiler: *Compiler, name: Scanner.Token) isize {
-        if (compiler.local_count == 0) return -1;
-        var start: isize = compiler.local_count - 1;
+    fn resolveUpvalue(self: *Compiler, name: Scanner.Token) isize {
+        if (self.enclosing == null) return -1;
+
+        const local = self.enclosing.?.resolveLocal(name);
+        if (local != -1) {
+            self.enclosing.?.locals[@intCast(local)].is_captured = true;
+            return @intCast(self.addUpvalue(@intCast(local), true));
+        }
+
+        const upvalue = resolveUpvalue(self.enclosing.?, name);
+
+        if (upvalue != -1) return @intCast(self.addUpvalue(@intCast(upvalue), false));
+
+        return -1;
+    }
+
+    fn addUpvalue(self: *Compiler, index: u8, is_local: bool) usize {
+        const upvalue_count = self.function.upvalue_count;
+
+        for (0..upvalue_count) |i| {
+            const upvalue = self.upvalues[i];
+            if (upvalue.index == index and upvalue.is_local == is_local) {
+                return i;
+            }
+        }
+
+        if (upvalue_count == UINT8_COUNT) {
+            self.parser.reportError("too many closure variables in function.");
+        }
+
+        self.upvalues[upvalue_count].is_local = is_local;
+        self.upvalues[upvalue_count].index = index;
+        const ret_val = self.function.upvalue_count;
+        self.function.upvalue_count += 1;
+        return ret_val;
+    }
+
+    fn resolveLocal(self: *Compiler, name: Scanner.Token) isize {
+        if (self.local_count == 0) return -1;
+        var start: isize = self.local_count - 1;
 
         while (start >= 0) : (start -= 1) {
-            const local = compiler.locals[@intCast(start)];
+            const local = self.locals[@intCast(start)];
             if (cmpIdentifier(name, local.name)) {
                 if (local.depth == -1) self.parser.reportError("Can't read local variable in its own initializer");
                 return @intCast(start);
@@ -555,6 +735,7 @@ const Compiler = struct {
 const Local = struct {
     name: Scanner.Token,
     depth: i8,
+    is_captured: bool,
 };
 
 // const ParseFn = fn () void;
@@ -664,9 +845,9 @@ const Parser = struct {
         std.debug.print("[line {d}] Error", .{token.line});
 
         switch (token.type) {
-            .TOKEN_EOF => std.debug.print(" at end", .{}),
+            .TOKEN_EOF => std.debug.print(" at end\n", .{}),
             .TOKEN_ERROR => {},
-            else => std.debug.print(" at {s}", .{token.data[0..token.length]}),
+            else => std.debug.print(" at {s}\n", .{token.data[0..token.length]}),
         }
 
         std.debug.print(": {s\n}", .{message});
@@ -714,7 +895,11 @@ fn endScope(compiler: *Compiler) void {
     compiler.scope_depth -= 1;
 
     while (compiler.local_count > 0 and compiler.locals[compiler.local_count - 1].depth > compiler.scope_depth) {
-        compiler.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+        if (compiler.locals[compiler.local_count - 1].is_captured) {
+            compiler.emitByte(@intFromEnum(chunk.opCode.OP_CLOSE_UPVALUE)) catch unreachable;
+        } else {
+            compiler.emitByte(@intFromEnum(chunk.opCode.OP_POP)) catch unreachable;
+        }
         compiler.local_count -= 1;
     }
 }
@@ -722,9 +907,15 @@ fn endScope(compiler: *Compiler) void {
 fn logError(msg: []const u8, line: usize) void {
     std.log.err("{s} line {d}\n", .{ msg, line });
 }
+const CompileError = error{GeneralError};
 
-pub fn compile(gpa: std.mem.Allocator, src: []const u8, dst: *chunk.Chunk) bool {
-    var compiler = Compiler.init(gpa, src, dst);
+pub fn compile(gpa: std.mem.Allocator, src: []const u8) ?values.Function {
+    var parser = Parser.new(src);
+    var compiler = Compiler.init(gpa, &parser, .TYPE_SCRIPT) catch {
+        std.debug.print("Error initializing compiler.", .{});
+        return null;
+    };
+    current = &compiler;
 
     compiler.parser.advance();
 
@@ -732,9 +923,10 @@ pub fn compile(gpa: std.mem.Allocator, src: []const u8, dst: *chunk.Chunk) bool 
         compiler.declaration();
     }
 
-    compiler.endCompiler() catch |err| {
-        std.debug.print("{} when ending compilation", .{err});
+    const func = compiler.endCompiler() catch |err| {
+        std.debug.print("{} when ending compiliation.", .{err});
     };
 
-    return !compiler.parser.had_error;
+    if (compiler.parser.had_error) return null;
+    return func;
 }
